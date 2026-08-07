@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">CodingCenter</title>
+  <desc id="desc">代码括号与协同节点组成的 CodingCenter 标记</desc>
+  <rect width="64" height="64" rx="18" fill="#08775B"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="16.5" fill="none" stroke="#5ED5B1" stroke-opacity=".55" stroke-width="3"/>
+  <path d="m26 18-10 14 10 14M38 18l10 14-10 14" fill="none" stroke="#F4FFFB" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5"/>
+  <path d="M32 24v16" fill="none" stroke="#B9F2DF" stroke-linecap="round" stroke-width="3"/>
+  <circle cx="32" cy="24" r="4" fill="#F4FFFB"/>
+  <circle cx="32" cy="40" r="4" fill="#F4FFFB"/>
+</svg>

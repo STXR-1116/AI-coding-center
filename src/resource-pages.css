@@ -1,0 +1,885 @@
+/* Resource workbenches: readable rows first, deep configuration in a sticky
+   inspector.  This file is loaded by the lazy resource routes. */
+.knowledge-page,
+.skills-page {
+  --resource-panel: rgba(255, 255, 255, 0.7);
+  --resource-border: rgba(91, 124, 130, 0.15);
+}
+
+.knowledge-page .knowledge-summary,
+.skills-page .skills-summary-grid {
+  gap: 8px;
+}
+
+.knowledge-page .knowledge-summary > article,
+.skills-page .skill-summary-card {
+  min-height: 62px;
+  border: 1px solid var(--resource-border);
+  border-radius: 10px;
+  padding: 8px 11px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: none;
+}
+
+.knowledge-page .knowledge-summary > article > span,
+.skills-page .skill-summary-card > span {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
+.knowledge-page .knowledge-summary strong,
+.skills-page .skill-summary-card strong {
+  font-size: 18px;
+}
+
+.knowledge-page .knowledge-workbench,
+.skills-page .skills-workbench {
+  grid-template-columns: minmax(0, 1fr) var(--cc-inspector);
+  gap: var(--cc-gap);
+  min-height: 0;
+  align-items: start;
+}
+
+.knowledge-page .knowledge-main-panel,
+.skills-page .skills-catalog-pane,
+.skills-page .skill-detail-pane {
+  min-width: 0;
+  border-color: var(--resource-border);
+  background: var(--resource-panel);
+  box-shadow: var(--cc-shadow);
+}
+
+.knowledge-page .knowledge-main-panel {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.knowledge-page .knowledge-list-panel {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.knowledge-page .knowledge-toolbar,
+.skills-page .skills-catalog-header {
+  min-height: 54px;
+  align-items: center;
+  padding: 10px 14px;
+}
+
+.knowledge-page .knowledge-toolbar > div:first-child,
+.skills-page .skills-catalog-header > div:first-child {
+  min-width: 0;
+}
+
+.knowledge-page .knowledge-toolbar h2,
+.skills-page .skills-catalog-header h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.knowledge-page .knowledge-toolbar p,
+.skills-page .skills-catalog-header span {
+  display: block;
+  margin: 4px 0 0;
+  color: var(--text-3);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.knowledge-page .knowledge-tools,
+.skills-page .skills-toolbar {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.knowledge-page .knowledge-list,
+.skills-page .skill-list {
+  overflow: visible;
+}
+
+.knowledge-page .knowledge-row {
+  min-height: 70px;
+  grid-template-columns: 34px minmax(180px, 1fr) 58px 68px 72px 82px 28px;
+  gap: 9px;
+  padding: 8px 12px;
+}
+
+.knowledge-page .knowledge-row-identity {
+  min-width: 0;
+}
+
+.knowledge-page .knowledge-row-identity strong {
+  font-size: 12px;
+}
+
+.knowledge-page .knowledge-row-identity small,
+.knowledge-page .knowledge-row-identity code {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.knowledge-page .knowledge-row-identity code {
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.knowledge-page .knowledge-bound-count,
+.knowledge-page .knowledge-latency,
+.knowledge-page .knowledge-call-count {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  align-items: center;
+  column-gap: 4px;
+}
+
+.knowledge-page .knowledge-bound-count small,
+.knowledge-page .knowledge-latency small,
+.knowledge-page .knowledge-call-count small {
+  grid-column: 2;
+}
+
+.knowledge-page .knowledge-activity-panel {
+  margin: 10px 12px 12px;
+  border: 1px solid var(--resource-border);
+  border-radius: 10px;
+  background: rgba(247, 251, 251, 0.72);
+}
+
+.knowledge-page .knowledge-activity-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 9px;
+}
+
+.knowledge-page .knowledge-activity-grid > div {
+  min-width: 0;
+  border: 1px solid rgba(91, 124, 130, 0.1);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.knowledge-page .knowledge-inspector,
+.skills-page .skill-detail-pane {
+  position: sticky;
+  top: calc(var(--cc-header-height) + 14px);
+  max-height: calc(100dvh - var(--cc-header-height) - 28px);
+  overflow: auto;
+}
+
+.skills-page .skills-workbench {
+  grid-template-columns: minmax(0, 1fr) var(--cc-inspector);
+}
+
+.skills-page .skills-catalog-pane {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: visible;
+}
+
+.skills-page .skills-toolbar {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.skills-page .skills-search {
+  min-width: 220px;
+}
+
+.skills-page .skill-list-row {
+  min-height: 72px;
+  grid-template-columns: 34px minmax(0, 1fr) auto 16px;
+  gap: 10px;
+  padding: 9px 13px;
+}
+
+.skills-page .skill-list-main {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.skills-page .skill-list-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.skills-page .skill-list-title strong,
+.skills-page .skill-list-main > small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.skills-page .skill-list-main > small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.skills-page .skill-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.skills-page .skill-detail-pane {
+  padding-bottom: 12px;
+}
+
+.skills-page .skill-detail-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+}
+
+.skills-page .skill-detail-section {
+  margin: 12px 14px 0;
+  border: 1px solid var(--resource-border);
+  border-radius: 9px;
+  background: rgba(248, 252, 252, 0.68);
+}
+
+.skills-page .skill-detail-section > header {
+  min-height: 38px;
+  padding-inline: 10px;
+}
+
+.skills-page .skill-agent-bindings,
+.skills-page .skill-token-list,
+.skills-page .skill-file-list {
+  padding: 8px 10px 10px;
+}
+
+@media (max-width: 900px) {
+  .knowledge-page .knowledge-workbench,
+  .skills-page .skills-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .knowledge-page .knowledge-inspector,
+  .skills-page .skill-detail-pane {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .resource-mobile-tabs {
+    grid-column: 1;
+  }
+
+  .knowledge-page .knowledge-workbench.mobile-view-list .knowledge-inspector,
+  .knowledge-page .knowledge-workbench.mobile-view-activity .knowledge-inspector,
+  .knowledge-page .knowledge-workbench.mobile-view-detail .knowledge-main-panel,
+  .skills-page .skills-workbench.mobile-view-list .skill-detail-pane,
+  .skills-page .skills-workbench.mobile-view-detail .skills-catalog-pane {
+    display: none;
+  }
+
+  .knowledge-page .knowledge-workbench.mobile-view-list .knowledge-activity-panel,
+  .knowledge-page .knowledge-workbench.mobile-view-activity .knowledge-list-panel {
+    display: none;
+  }
+
+  .knowledge-page .knowledge-activity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .skills-page .skills-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .skills-page .skills-search {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .knowledge-page .knowledge-summary,
+  .skills-page .skills-summary-grid {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .knowledge-page .knowledge-summary > article,
+  .skills-page .skill-summary-card {
+    min-width: 164px;
+  }
+
+  .knowledge-page .knowledge-row {
+    grid-template-columns: 32px minmax(0, 1fr) 70px 24px;
+  }
+
+  .knowledge-page .knowledge-bound-count,
+  .knowledge-page .knowledge-call-count,
+  .knowledge-page .knowledge-row > .knowledge-health {
+    display: none;
+  }
+
+  .skills-page .skill-list-row {
+    min-height: 78px;
+  }
+
+  .skills-page .skill-status-badge {
+    align-self: start;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .knowledge-page .knowledge-activity-panel,
+  .knowledge-page .knowledge-activity-grid > div,
+  .skills-page .skill-detail-header {
+    background: var(--surface-solid);
+    backdrop-filter: none;
+  }
+}
+
+/* Last-mile type floor for compact inspector labels and repository metadata. */
+.requirements-page .linked-task-section strong,
+.requirements-page .linked-task-row strong,
+.agents-page .agent-skills-section > header strong,
+.repositories-page .repository-linked-tasks strong,
+.repositories-page .repository-storage strong,
+.repositories-page .repository-task-count b {
+  font-size: var(--type-ui);
+  line-height: 1.4;
+}
+
+.knowledge-page .knowledge-toolbar p {
+  font-size: var(--type-meta);
+  line-height: 1.5;
+}
+
+/* PC workbench contract. The route-level resource stylesheet is lazy-loaded
+   after the shell stylesheet, so these selectors intentionally own the final
+   geometry for knowledge and skills without changing their visual language. */
+@media (min-width: 901px) {
+  .knowledge-page,
+  .skills-page {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    flex-direction: column;
+  }
+
+  .knowledge-page .knowledge-workbench,
+  .skills-page .skills-workbench {
+    display: grid;
+    height: 100%;
+    min-height: 0 !important;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, 1fr) var(--cc-inspector);
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+    gap: var(--cc-gap);
+    overflow: hidden;
+  }
+
+  /* WorkbenchLayout adds these two wrappers around every route panel. Keep
+     the wrapper itself inside the page track so only its descendants scroll. */
+  .knowledge-page .knowledge-workbench > .cc-workbench-main,
+  .knowledge-page .knowledge-workbench > .cc-workbench-inspector,
+  .skills-page .skills-workbench > .cc-workbench-main,
+  .skills-page .skills-workbench > .cc-workbench-inspector {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .knowledge-page .knowledge-workbench > .cc-workbench-main,
+  .skills-page .skills-workbench > .cc-workbench-main {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .knowledge-page .knowledge-workbench > .cc-workbench-inspector,
+  .skills-page .skills-workbench > .cc-workbench-inspector {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .knowledge-page .knowledge-main-panel,
+  .skills-page .skills-catalog-pane,
+  .skills-page .skill-detail-pane,
+  .knowledge-page .knowledge-inspector {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .knowledge-page .knowledge-main-panel,
+  .skills-page .skills-catalog-pane {
+    overflow: hidden;
+  }
+
+  .knowledge-page .knowledge-list-panel {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .knowledge-page .knowledge-list {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .knowledge-page .knowledge-activity-panel {
+    max-height: clamp(108px, 18dvh, 148px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .knowledge-page .knowledge-inspector {
+    position: static;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+  }
+
+  .knowledge-page .knowledge-inspector .inspector-body {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .skills-page .skills-catalog-pane {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .skills-page .skill-list {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .skills-page .skill-detail-pane {
+    position: static;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .skills-page .skill-detail-header {
+    position: relative;
+    top: auto;
+    z-index: 1;
+  }
+
+  .skills-page .skill-detail-body {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .skills-page .skill-detail-actions {
+    min-height: 0;
+    margin-top: 0;
+    background: rgba(248, 252, 252, 0.86);
+  }
+
+  .knowledge-page .knowledge-workbench[data-layout-region="workbench"],
+  .skills-page .skills-workbench[data-layout-region="workbench"] {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 900px) {
+  .knowledge-page,
+  .skills-page {
+    height: auto;
+    min-height: 0;
+  }
+
+  .knowledge-page .knowledge-workbench,
+  .skills-page .skills-workbench {
+    height: auto;
+    min-height: 0 !important;
+  }
+
+  .knowledge-page .knowledge-main-panel,
+  .skills-page .skills-catalog-pane,
+  .skills-page .skill-detail-pane,
+  .knowledge-page .knowledge-inspector {
+    height: auto;
+    max-height: none;
+  }
+}
+
+/* Route surface contract. Glass is reserved for fixed chrome; primary
+   reading surfaces and nested content use stable, near-solid fills. */
+.requirements-page,
+.agents-page,
+.repositories-page,
+.knowledge-page,
+.skills-page {
+  --cc-route-surface: #fbfdfd;
+  --cc-route-surface-muted: #f3f7f6;
+  --cc-route-surface-active: #e8f5f0;
+  --cc-route-chrome: rgba(248, 252, 251, 0.9);
+  --cc-route-border: rgba(72, 101, 105, 0.16);
+  --cc-route-divider: rgba(72, 101, 105, 0.1);
+  --cc-route-text-muted: #607572;
+  --cc-route-shadow: 0 8px 24px rgba(45, 73, 78, 0.055), inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.requirements-page .cc-summary-item,
+.agents-page .cc-summary-item,
+.repositories-page .cc-summary-item,
+.knowledge-page .knowledge-summary > article,
+.skills-page .skill-summary-card {
+  border-color: var(--cc-route-border);
+  background: var(--cc-route-surface);
+  box-shadow: var(--cc-route-shadow);
+}
+
+.requirements-page .requirements-main-panel,
+.agents-page .agents-main-panel,
+.repositories-page .repository-main-panel,
+.knowledge-page .knowledge-main-panel,
+.skills-page .skills-catalog-pane,
+.requirements-page .requirement-inspector,
+.agents-page .agent-inspector,
+.agents-page .squad-inspector,
+.repositories-page .repository-inspector,
+.knowledge-page .knowledge-inspector,
+.skills-page .skill-detail-pane {
+  border-color: var(--cc-route-border);
+  background: var(--cc-route-surface);
+  box-shadow: var(--cc-route-shadow);
+}
+
+.requirements-page .requirements-toolbar,
+.agents-page .agents-toolbar,
+.repositories-page .repository-toolbar,
+.knowledge-page .knowledge-toolbar,
+.skills-page .skills-catalog-header,
+.skills-page .skills-toolbar,
+.requirements-page .inspector-heading,
+.agents-page .inspector-heading,
+.repositories-page .inspector-heading,
+.knowledge-page .inspector-heading,
+.skills-page .skill-detail-header,
+.requirements-page .inspector-footer,
+.agents-page .inspector-footer,
+.repositories-page .inspector-footer,
+.knowledge-page .inspector-footer,
+.skills-page .skill-detail-actions {
+  border-color: var(--cc-route-divider);
+  background: var(--cc-route-chrome);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+}
+
+.requirements-page .requirements-toolbar,
+.agents-page .agents-toolbar,
+.repositories-page .repository-toolbar,
+.knowledge-page .knowledge-toolbar,
+.skills-page .skills-catalog-header {
+  min-height: 58px;
+}
+
+.requirements-page .requirements-list,
+.agents-page .agent-list,
+.repositories-page .repository-list,
+.knowledge-page .knowledge-list,
+.skills-page .skill-list {
+  padding: 6px 8px;
+  background: var(--cc-route-surface);
+}
+
+.requirements-page .requirement-row,
+.agents-page .agent-row,
+.repositories-page .repository-row,
+.knowledge-page .knowledge-row,
+.skills-page .skill-list-row {
+  min-height: 74px;
+  border-bottom-color: var(--cc-route-divider);
+  padding-block: 10px;
+  padding-inline: 12px;
+  background: transparent;
+  transition: background-color var(--cc-duration-fast) var(--cc-ease-standard), box-shadow var(--cc-duration-fast) var(--cc-ease-standard);
+}
+
+.requirements-page .requirement-row:hover,
+.agents-page .agent-row:hover,
+.repositories-page .repository-row:hover,
+.knowledge-page .knowledge-row:hover,
+.skills-page .skill-list-row:hover {
+  background: var(--cc-route-surface-muted);
+}
+
+.requirements-page .requirement-row.is-active,
+.agents-page .agent-row.is-active,
+.repositories-page .repository-row.is-active,
+.knowledge-page .knowledge-row.is-active,
+.skills-page .skill-list-row.is-active {
+  background: var(--cc-route-surface-active);
+  box-shadow: inset 3px 0 0 var(--emerald);
+}
+
+.requirements-page .requirement-row-heading strong,
+.agents-page .agent-row-identity strong,
+.repositories-page .repository-identity strong,
+.knowledge-page .knowledge-row-identity strong,
+.skills-page .skill-list-title strong {
+  color: var(--text);
+  font-size: var(--type-ui);
+  font-weight: 680;
+  line-height: 1.35;
+}
+
+.requirements-page .requirement-row-content > small,
+.agents-page .agent-row small,
+.repositories-page .repository-identity small,
+.knowledge-page .knowledge-row-identity small,
+.knowledge-page .knowledge-row-identity code,
+.skills-page .skill-list-main > small,
+.skills-page .skill-list-meta {
+  color: var(--cc-route-text-muted);
+  font-size: var(--type-meta);
+  line-height: 1.45;
+}
+
+.agents-page .agent-runtime,
+.agents-page .agent-current-task b,
+.repositories-page .repository-branch,
+.repositories-page .repository-language,
+.repositories-page .repository-task-count,
+.repositories-page .repository-updated,
+.repositories-page .repo-health,
+.knowledge-page .knowledge-bound-count,
+.knowledge-page .knowledge-latency,
+.knowledge-page .knowledge-call-count {
+  font-size: var(--type-micro);
+  line-height: 1.4;
+}
+
+.knowledge-page .knowledge-bound-count b,
+.knowledge-page .knowledge-latency b,
+.knowledge-page .knowledge-call-count b {
+  font-size: var(--type-ui);
+  font-weight: 680;
+}
+
+.requirements-page .requirement-row-icon,
+.agents-page .agent-avatar,
+.repositories-page .repository-icon,
+.knowledge-page .knowledge-row-icon,
+.skills-page .skill-list-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+
+.requirements-page .inspector-heading strong,
+.agents-page .inspector-heading strong,
+.repositories-page .inspector-heading strong,
+.knowledge-page .inspector-heading strong,
+.skills-page .skill-detail-header h2 {
+  font-size: var(--type-ui);
+  font-weight: 680;
+}
+
+.requirements-page .requirement-detail-title h2,
+.agents-page .agent-profile h2,
+.agents-page .squad-inspector h2,
+.repositories-page .repository-inspector h2,
+.knowledge-page .knowledge-inspector h2,
+.skills-page .skill-detail-header h2 {
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.requirements-page .requirement-description,
+.agents-page .agent-profile p,
+.repositories-page .inspector-summary,
+.knowledge-page .inspector-summary,
+.skills-page .skill-detail-description,
+.requirements-page .detail-list dt,
+.requirements-page .detail-list dd,
+.agents-page .detail-list dt,
+.agents-page .detail-list dd,
+.repositories-page .detail-list dt,
+.repositories-page .detail-list dd,
+.knowledge-page .detail-list dt,
+.knowledge-page .detail-list dd,
+.skills-page .skill-detail-facts dt,
+.skills-page .skill-detail-facts dd {
+  font-size: var(--type-ui);
+  line-height: 1.55;
+}
+
+/* Flatten nested translucent cards into one readable content plane. */
+.requirements-page .requirement-task-progress,
+.requirements-page .linked-task-section,
+.requirements-page .spec-history-section,
+.agents-page .inspector-section,
+.agents-page .agent-skills-section,
+.agents-page .squad-member-section,
+.repositories-page .inspector-section,
+.repositories-page .repository-linked-tasks,
+.knowledge-page .knowledge-config-section,
+.knowledge-page .knowledge-binding-section,
+.skills-page .skill-detail-section {
+  border-color: var(--cc-route-divider);
+  background: transparent;
+  box-shadow: none;
+}
+
+.requirements-page .linked-task-row,
+.requirements-page .spec-version,
+.agents-page .squad-member,
+.repositories-page .repository-linked-tasks > button,
+.knowledge-page .knowledge-agent-binding,
+.skills-page .skill-agent-row {
+  background: transparent;
+}
+
+.requirements-page .spec-version.is-current,
+.agents-page .squad-member.is-selected,
+.knowledge-page .knowledge-agent-binding.is-selected {
+  background: var(--cc-route-surface-active);
+}
+
+.agents-page .agent-task-callout,
+.repositories-page .repository-health-card,
+.repositories-page .repository-storage,
+.knowledge-page .knowledge-degradation-warning,
+.skills-page .skill-impact-notice {
+  background: var(--cc-route-surface-muted);
+  box-shadow: none;
+}
+
+.agents-page .squad-card,
+.repositories-page .repository-file-tree,
+.repositories-page .repository-code-preview,
+.repositories-page .commit-browser > .commit-list,
+.repositories-page .commit-detail {
+  border-color: var(--cc-route-border);
+  background: var(--cc-route-surface);
+  box-shadow: none;
+}
+
+.repositories-page .repository-file-tree > header,
+.repositories-page .repository-code-preview > header,
+.repositories-page .commit-browser > .commit-list > header {
+  border-color: var(--cc-route-divider);
+  background: var(--cc-route-surface-muted);
+}
+
+.knowledge-page .knowledge-activity-panel {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--cc-route-divider);
+  border-radius: 0;
+  background: var(--cc-route-surface-muted);
+}
+
+.knowledge-page .knowledge-activity-grid > div {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.knowledge-page .knowledge-activity-grid > div + div {
+  border-left: 1px solid var(--cc-route-divider);
+}
+
+.skills-page .skill-detail-section {
+  margin-inline: 16px;
+  border: 0;
+  border-top: 1px solid var(--cc-route-divider);
+  border-radius: 0;
+}
+
+@media (min-width: 901px) {
+  .requirements-page .requirements-workbench,
+  .agents-page .agents-workbench,
+  .repositories-page .repository-workbench,
+  .knowledge-page .knowledge-workbench,
+  .skills-page .skills-workbench {
+    height: 100%;
+    min-height: 0 !important;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .requirements-page .requirements-workbench > .cc-workbench-main,
+  .requirements-page .requirements-workbench > .cc-workbench-inspector,
+  .agents-page .agents-workbench > .cc-workbench-main,
+  .agents-page .agents-workbench > .cc-workbench-inspector,
+  .repositories-page .repository-workbench > .cc-workbench-main,
+  .repositories-page .repository-workbench > .cc-workbench-inspector {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .requirements-page .requirements-main-panel,
+  .agents-page .agents-main-panel,
+  .repositories-page .repository-main-panel,
+  .requirements-page .requirement-inspector,
+  .agents-page .agent-inspector,
+  .agents-page .squad-inspector,
+  .repositories-page .repository-inspector {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .requirements-page .requirements-list,
+  .agents-page .agent-list,
+  .agents-page .squad-grid,
+  .repositories-page .repository-list,
+  .repositories-page .repository-explorer,
+  .repositories-page .commit-browser {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .requirements-page .requirements-toolbar,
+  .agents-page .agents-toolbar,
+  .repositories-page .repository-toolbar,
+  .knowledge-page .knowledge-toolbar,
+  .skills-page .skills-catalog-header,
+  .skills-page .skills-toolbar,
+  .requirements-page .inspector-heading,
+  .agents-page .inspector-heading,
+  .repositories-page .inspector-heading,
+  .knowledge-page .inspector-heading,
+  .skills-page .skill-detail-header,
+  .requirements-page .inspector-footer,
+  .agents-page .inspector-footer,
+  .repositories-page .inspector-footer,
+  .knowledge-page .inspector-footer,
+  .skills-page .skill-detail-actions {
+    background: var(--cc-route-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

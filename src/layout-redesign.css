@@ -1,0 +1,1537 @@
+/* CodingCenter layout system: ordered after the legacy surface rules so the
+   workbench can migrate page by page without changing data contracts. */
+:root {
+  --cc-page-max: 2048px;
+  --cc-rail: 184px;
+  --cc-page-gutter: 24px;
+  --cc-inspector: clamp(340px, 22vw, 376px);
+  --cc-gap: 14px;
+  --cc-section-gap: 12px;
+  --cc-panel-border: rgba(65, 94, 98, 0.16);
+  --cc-panel-bg: #fbfdfd;
+  --cc-panel-bg-strong: #ffffff;
+  --cc-shadow: 0 10px 30px rgba(45, 73, 78, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --cc-header-height: 66px;
+}
+
+/* The desktop shell owns the viewport. Page and panel content scroll inside
+   their own regions so a long inspector can never stretch the neighboring
+   workbench or push the page below the fold. */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+body {
+  background: var(--canvas);
+}
+
+.sidebar {
+  width: calc(var(--cc-rail) - 10px);
+  inset: 10px auto 10px 10px;
+  border-radius: 14px;
+  background: rgba(248, 252, 253, 0.86);
+  box-shadow: var(--cc-shadow);
+}
+
+.app-main {
+  display: grid;
+  height: 100dvh;
+  min-height: 0;
+  grid-template-rows: var(--cc-header-height) minmax(0, 1fr);
+  margin-left: var(--cc-rail);
+  overflow: hidden;
+}
+
+.topbar {
+  position: relative;
+  min-height: 0;
+  height: var(--cc-header-height);
+  grid-template-columns: minmax(190px, 1fr) minmax(280px, 440px) auto;
+  gap: 18px;
+  padding: 9px 24px 8px;
+  background: rgba(237, 244, 246, 0.86);
+}
+
+.topbar-heading h1 {
+  font-size: 19px;
+  letter-spacing: 0;
+}
+
+.topbar-heading p {
+  font-size: 11px;
+}
+
+.topbar-context {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.topbar-context span,
+.topbar-context strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.topbar-context span {
+  color: var(--text-3);
+  font-size: var(--type-micro);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.topbar-context strong {
+  color: var(--text-2);
+  font-size: var(--type-ui);
+  font-weight: 650;
+}
+
+.global-search {
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.topbar-actions {
+  gap: 8px;
+}
+
+.page-content {
+  display: block;
+  width: min(100%, var(--cc-page-max));
+  height: 100%;
+  min-height: 0;
+  margin: 0 auto;
+  overflow: hidden;
+  padding: 12px var(--cc-page-gutter) 18px;
+}
+
+.tasks-page,
+.requirements-page,
+.agents-page,
+.repositories-page,
+.knowledge-page,
+.skills-page,
+.analytics-page,
+.settings-page,
+.workspace-page {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: var(--cc-section-gap);
+  min-width: 0;
+  min-height: 0;
+}
+
+.tasks-page > .cc-workbench,
+.requirements-page > .cc-workbench,
+.agents-page > .cc-workbench,
+.repositories-page > .cc-workbench,
+.knowledge-page > .cc-workbench,
+.skills-page > .cc-workbench,
+.tasks-page > .task-workbench,
+.requirements-page > .requirements-workbench,
+.agents-page > .agents-workbench,
+.repositories-page > .repository-workbench,
+.knowledge-page > .knowledge-workbench,
+.skills-page > .skills-workbench {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.cc-page-header {
+  display: flex;
+  min-height: 48px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 3px 2px 1px;
+}
+
+.cc-page-header-copy {
+  min-width: 0;
+}
+
+.cc-page-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--emerald-dark);
+  font-size: var(--type-micro);
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.cc-page-header h2,
+.cc-page-header p {
+  margin: 0;
+}
+
+.cc-page-header h2 {
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.cc-page-header p {
+  max-width: 62ch;
+  margin-top: 5px;
+  color: var(--text-2);
+  font-size: var(--type-ui);
+  line-height: 1.45;
+}
+
+.cc-page-header-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cc-summary-strip {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.cc-summary-item {
+  display: grid;
+  min-width: 0;
+  min-height: 54px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 8px;
+  border: 1px solid var(--cc-panel-border);
+  border-radius: 10px;
+  padding: 7px 10px;
+  background: var(--cc-panel-bg-strong);
+  box-shadow: var(--cc-shadow);
+}
+
+.cc-summary-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  grid-row: span 2;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--emerald-dark);
+  background: var(--emerald-soft);
+}
+
+.cc-summary-blue .cc-summary-icon { color: var(--blue); background: var(--blue-soft); }
+.cc-summary-green .cc-summary-icon { color: var(--emerald-dark); background: var(--emerald-soft); }
+.cc-summary-amber .cc-summary-icon { color: var(--amber); background: var(--amber-soft); }
+.cc-summary-violet .cc-summary-icon { color: var(--violet); background: var(--violet-soft); }
+.cc-summary-red .cc-summary-icon { color: var(--red); background: var(--red-soft); }
+
+.cc-summary-label,
+.cc-summary-item strong,
+.cc-summary-item small {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cc-summary-label {
+  color: var(--text-2);
+  font-size: var(--type-meta);
+  font-weight: 650;
+}
+
+.cc-summary-item strong {
+  grid-column: 2;
+  margin-top: 2px;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.cc-summary-item small {
+  grid-column: 3;
+  color: var(--text-3);
+  font-size: var(--type-micro);
+  text-align: right;
+}
+
+.cc-workbench {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) var(--cc-inspector);
+  align-items: start;
+  gap: var(--cc-gap);
+}
+
+.cc-workbench-main,
+.cc-workbench-inspector {
+  min-width: 0;
+}
+
+.cc-workbench-inspector {
+  position: sticky;
+  top: calc(var(--cc-header-height) + 14px);
+  min-height: 0;
+}
+
+.cc-workbench.is-inspector-closed {
+  grid-template-columns: minmax(0, 1fr) 0;
+}
+
+.cc-workbench.is-inspector-closed .cc-workbench-inspector {
+  display: none;
+}
+
+.cc-inspector-toggle {
+  position: absolute;
+  z-index: 3;
+  top: 9px;
+  right: 9px;
+  display: inline-flex;
+  width: 28px;
+  height: 27px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 10px;
+}
+
+.cc-inspector-toggle > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cc-inspector-toggle:hover {
+  color: var(--emerald-dark);
+  border-color: rgba(21, 155, 120, 0.28);
+}
+
+.cc-mobile-view-tabs {
+  display: none;
+}
+
+.cc-mobile-view-tabs button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 11px;
+  color: var(--text-2);
+  background: transparent;
+  font-size: 11px;
+}
+
+.cc-mobile-view-tabs button.is-active {
+  color: var(--emerald-dark);
+  background: var(--emerald-soft);
+  font-weight: 700;
+}
+
+.cc-mobile-view-tabs b {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 5px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 10px;
+}
+
+/* Existing workbench shells migrate into the common grid contract. */
+.task-workbench,
+.requirements-workbench,
+.agents-workbench,
+.repository-workbench,
+.skills-workbench,
+.knowledge-workbench {
+  grid-template-columns: minmax(0, 1fr) var(--cc-inspector);
+  gap: var(--cc-gap);
+  min-height: 0;
+  align-items: start;
+}
+
+.requirements-workbench,
+.agents-workbench,
+.repository-workbench {
+  position: relative;
+}
+
+.task-workbench {
+  position: relative;
+}
+
+.task-workbench > .cc-inspector-toggle,
+.requirements-workbench > .cc-inspector-toggle,
+.agents-workbench > .cc-inspector-toggle,
+.repository-workbench > .cc-inspector-toggle {
+  top: 10px;
+  right: calc(var(--cc-inspector) - 36px);
+}
+
+.task-workbench.is-inspector-closed > .cc-inspector-toggle,
+.requirements-workbench.is-inspector-closed > .cc-inspector-toggle,
+.agents-workbench.is-inspector-closed > .cc-inspector-toggle,
+.repository-workbench.is-inspector-closed > .cc-inspector-toggle {
+  right: 10px;
+}
+
+@media (min-width: 901px) {
+  .task-workbench.is-inspector-closed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .task-workbench.is-inspector-closed .task-inspector {
+    display: none;
+  }
+
+  .requirements-workbench.is-inspector-closed,
+  .agents-workbench.is-inspector-closed,
+  .repository-workbench.is-inspector-closed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .requirements-workbench.is-inspector-closed .requirement-inspector,
+  .agents-workbench.is-inspector-closed .agent-inspector,
+  .agents-workbench.is-inspector-closed .squad-inspector,
+  .repository-workbench.is-inspector-closed .repository-inspector {
+    display: none;
+  }
+}
+
+.task-center-column,
+.requirements-main-panel,
+.agents-main-panel,
+.repository-main-panel,
+.skills-catalog-pane,
+.knowledge-main-panel,
+.settings-content,
+.analytics-trend-panel,
+.agent-observability-panel,
+.audit-panel {
+  min-width: 0;
+  border-color: var(--cc-panel-border);
+  background: var(--cc-panel-bg);
+  box-shadow: var(--cc-shadow);
+}
+
+.task-center-column {
+  grid-template-rows: auto auto auto;
+  overflow: visible;
+}
+
+.board-toolbar,
+.requirements-toolbar,
+.agents-toolbar,
+.repository-toolbar,
+.knowledge-toolbar,
+.skills-catalog-header {
+  min-height: 54px;
+  padding: 10px 14px;
+}
+
+.board-overview {
+  grid-template-columns: minmax(220px, 25%) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 300px;
+  padding: 12px;
+}
+
+.task-groups {
+  max-height: 336px;
+  overflow-y: auto;
+}
+
+.timeline-panel {
+  min-height: 154px;
+}
+
+.task-inspector,
+.requirement-inspector,
+.agent-inspector,
+.squad-inspector,
+.repository-inspector,
+.skill-inspector,
+.knowledge-inspector {
+  min-height: 0;
+  max-height: calc(100dvh - var(--cc-header-height) - 28px);
+  overflow: auto;
+  border-color: var(--cc-panel-border);
+  background: var(--cc-panel-bg-strong);
+  box-shadow: var(--cc-shadow);
+}
+
+.requirements-list,
+.agent-list,
+.repository-list,
+.knowledge-list,
+.skill-list {
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.requirement-row,
+.agent-row,
+.repository-row,
+.knowledge-row,
+.skill-list-row {
+  min-height: 68px;
+}
+
+.agent-row {
+  grid-template-columns: 36px minmax(138px, 1.1fr) 70px minmax(140px, 1.1fr) minmax(150px, 1fr) 82px;
+}
+
+.repository-row {
+  grid-template-columns: 34px minmax(190px, 1.5fr) minmax(110px, 0.8fr) minmax(80px, 0.55fr) 66px 86px 82px 16px;
+}
+
+.knowledge-row {
+  grid-template-columns: 34px minmax(180px, 1fr) 62px 70px 76px 28px;
+}
+
+.settings-layout {
+  min-height: 0;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.settings-nav {
+  position: sticky;
+  top: calc(var(--cc-header-height) + 14px);
+  align-self: start;
+  height: auto;
+  max-height: calc(100dvh - var(--cc-header-height) - 30px);
+}
+
+.settings-content {
+  min-height: 0;
+  overflow: visible;
+}
+
+.settings-savebar {
+  position: sticky;
+  bottom: 10px;
+  z-index: 4;
+  margin-top: 12px;
+  border: 1px solid var(--cc-panel-border);
+  border-radius: 10px;
+  background: rgba(248, 252, 252, 0.94);
+  box-shadow: 0 10px 28px rgba(65, 96, 108, 0.14);
+  backdrop-filter: blur(16px);
+}
+
+.workspace-page {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  min-height: 0;
+}
+
+.workspace-surface {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--cc-panel-border);
+  border-radius: 12px;
+  background: var(--cc-reading-surface, #fbfdfd);
+  box-shadow: var(--cc-shadow);
+}
+
+.workspace-grid {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: 220px minmax(0, 1fr) 286px;
+  gap: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.workspace-commandbar {
+  min-height: 42px;
+  border: 0;
+  border-bottom: 1px solid var(--cc-panel-border);
+  border-color: var(--cc-panel-border);
+  border-radius: 0;
+  background: var(--cc-floating-material, rgba(248, 252, 251, 0.88));
+}
+
+.diff-drawer {
+  max-height: min(72dvh, 620px);
+}
+
+/* The compact strip is the source of truth for operational page metrics. */
+.metric-grid,
+.requirements-summary,
+.agent-metric-strip,
+.repository-summary,
+.repository-summary-grid,
+.skills-summary-grid,
+.knowledge-summary,
+.knowledge-summary-grid,
+.analytics-metric-grid,
+.analytics-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.metric-card,
+.requirements-summary > article,
+.agent-metric-strip > article,
+.repository-summary > article,
+.knowledge-summary > article,
+.analytics-metric-grid > article,
+.analytics-summary-grid > article,
+.skill-summary-card {
+  min-height: 62px;
+  border-radius: 10px;
+  padding: 9px 11px;
+  box-shadow: none;
+}
+
+.metric-card > div > strong,
+.requirements-summary strong,
+.agent-metric-strip strong,
+.repository-summary strong,
+.knowledge-summary strong,
+.analytics-metric-grid strong,
+.analytics-summary-grid strong {
+  font-size: 19px;
+}
+
+@media (max-width: 1199px) and (min-width: 901px) {
+  :root { --cc-rail: 72px; --cc-inspector: 286px; }
+
+  .sidebar {
+    width: 60px;
+  }
+
+  .brand-lockup {
+    justify-content: center;
+    padding-inline: 8px;
+  }
+
+  .brand-lockup > div,
+  .nav-link span,
+  .workspace-switcher-label,
+  .workspace-switcher label select,
+  .workspace-switcher label svg:last-child,
+  .sidebar-user > div,
+  .sidebar-user > svg {
+    display: none;
+  }
+
+  .primary-nav { align-items: center; padding-inline: 7px; }
+  .nav-link { width: 42px; justify-content: center; padding-inline: 0; }
+  .workspace-switcher { margin-inline: 7px; }
+  .workspace-switcher label { justify-content: center; padding-inline: 0; }
+  .sidebar-user { display: flex; justify-content: center; padding-inline: 6px; }
+  .page-content { padding-inline: 18px; }
+  .topbar { padding-inline: 18px; }
+}
+
+@media (max-width: 900px) {
+  :root { --cc-rail: 0px; --cc-header-height: 60px; }
+
+  .sidebar {
+    width: min(288px, calc(100vw - 28px));
+    inset: 8px auto 8px 8px;
+    transform: translateX(calc(-100% - 20px));
+  }
+
+  .sidebar.is-open { transform: translateX(0); }
+  .sidebar-close,
+  .mobile-menu { display: inline-grid; }
+  .app-main { margin-left: 0; }
+  .topbar { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 12px; }
+  .topbar-heading h1 { font-size: 17px; }
+  .topbar-heading p,
+  .global-search,
+  .topbar-actions > .icon-button,
+  .project-quick-status { display: none; }
+  .page-content { padding: 10px 12px 24px; }
+
+  .cc-page-header {
+    min-height: 44px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .cc-page-header-actions { width: 100%; justify-content: flex-start; }
+  .cc-page-header h2 { font-size: 18px; }
+  .cc-summary-strip {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+  }
+
+  .cc-summary-item {
+    min-width: 168px;
+    scroll-snap-align: start;
+  }
+
+  .cc-workbench,
+  .task-workbench,
+  .requirements-workbench,
+  .agents-workbench,
+  .repository-workbench,
+  .skills-workbench,
+  .knowledge-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cc-workbench-inspector,
+  .task-inspector,
+  .requirement-inspector,
+  .agent-inspector,
+  .squad-inspector,
+  .repository-inspector,
+  .skill-inspector,
+  .knowledge-inspector {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .cc-inspector-toggle { display: none; }
+  .cc-mobile-view-tabs { display: flex; gap: 4px; overflow-x: auto; }
+  .task-workbench.mobile-view-board .task-inspector,
+  .task-workbench.mobile-view-timeline .task-inspector,
+  .task-workbench.mobile-view-detail .task-center-column {
+    display: none;
+  }
+
+  .task-workbench.mobile-view-timeline .task-center-column {
+    display: block;
+  }
+
+  .task-workbench.mobile-view-timeline .board-toolbar,
+  .task-workbench.mobile-view-timeline .board-overview {
+    display: none;
+  }
+
+  .task-workbench.mobile-view-detail .task-inspector {
+    display: block;
+  }
+
+  .requirements-workbench.mobile-view-list .requirement-inspector,
+  .agents-workbench.mobile-view-list .agent-inspector,
+  .agents-workbench.mobile-view-list .squad-inspector,
+  .repository-workbench.mobile-view-list .repository-inspector {
+    display: none;
+  }
+  .requirements-workbench.mobile-view-detail .requirements-main-panel,
+  .agents-workbench.mobile-view-detail .agents-main-panel,
+  .repository-workbench.mobile-view-detail .repository-main-panel {
+    display: none;
+  }
+  .board-overview { grid-template-columns: minmax(190px, 27%) minmax(0, 1fr); }
+  .settings-layout { grid-template-columns: 1fr; }
+  .settings-nav { position: static; max-height: none; overflow-x: auto; }
+  .settings-nav-status { display: none; }
+  .workspace-grid {
+    height: calc(100dvh - var(--cc-header-height) - 94px);
+    min-height: 480px;
+    grid-template-columns: 200px minmax(0, 1fr) 252px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-content { padding-inline: 10px; }
+  .metric-grid,
+  .requirements-summary,
+  .agent-metric-strip,
+  .repository-summary,
+  .knowledge-summary,
+  .analytics-metric-grid,
+  .analytics-summary-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    scroll-snap-type: x proximity;
+  }
+
+  .metric-card,
+  .requirements-summary > article,
+  .agent-metric-strip > article,
+  .repository-summary > article,
+  .knowledge-summary > article,
+  .analytics-metric-grid > article,
+  .analytics-summary-grid > article {
+    min-width: 164px;
+    scroll-snap-align: start;
+  }
+
+  .board-overview { display: flex; flex-direction: column; }
+  .cascade-stage { order: -1; width: 100%; }
+  .task-groups { max-height: none; overflow: visible; }
+  .agent-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    min-height: 70px;
+  }
+  .agent-runtime,
+  .agent-current-task,
+  .agent-token-cell { display: none; }
+  .repository-row { grid-template-columns: 32px minmax(0, 1fr) auto 16px; }
+  .repository-branch,
+  .repository-language,
+  .repository-task-count,
+  .repository-updated { display: none; }
+  .knowledge-row { grid-template-columns: 32px minmax(0, 1fr) 68px 24px; }
+  .knowledge-bound-count,
+  .knowledge-call-count { display: none; }
+  .workspace-grid {
+    display: block;
+    height: calc(100dvh - var(--cc-header-height) - 106px);
+    min-height: 500px;
+  }
+  .workspace-grid > .workspace-explorer,
+  .workspace-grid > .conversation-pane,
+  .workspace-grid > .output-pane {
+    display: none;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  .workspace-grid.mobile-view-chat > .conversation-pane,
+  .workspace-grid.mobile-view-files > .workspace-explorer,
+  .workspace-grid.mobile-view-outputs > .output-pane { display: grid; }
+  .workspace-mobile-nav { position: sticky; bottom: 0; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar,
+  .topbar,
+  .global-search,
+  .cc-summary-item,
+  .cc-inspector-toggle,
+  .settings-savebar {
+    background: var(--surface-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-mobile-view-tabs,
+  .cc-workbench,
+  .cc-summary-strip { scroll-behavior: auto; }
+}
+
+/* -------------------------------------------------------------------------
+   PC workbench contract
+   ------------------------------------------------------------------------- */
+@media (min-width: 901px) {
+  :root {
+    --cc-rail: 184px;
+    --cc-page-gutter: 24px;
+    --cc-inspector: clamp(340px, 22vw, 376px);
+    --cc-gap: 14px;
+    --cc-section-gap: 12px;
+    --cc-header-height: 66px;
+  }
+
+  .app-canvas {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: calc(var(--cc-rail) - 10px);
+  }
+
+  .page-content {
+    width: 100%;
+    max-width: var(--cc-page-max);
+    padding-inline: var(--cc-page-gutter);
+  }
+
+  /* Secondary pages historically carried their own 1,680px cap. Keep all
+     route geometry on the AppShell grid so headers, summaries and workbenches
+     share exactly the same left and right edges. */
+  .page-content > .secondary-page,
+  .page-content > .tasks-page,
+  .page-content > .requirements-page,
+  .page-content > .agents-page,
+  .page-content > .repositories-page,
+  .page-content > .knowledge-page,
+  .page-content > .skills-page,
+  .page-content > .analytics-page,
+  .page-content > .settings-page,
+  .page-content > .workspace-page {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  .cc-mobile-view-tabs,
+  .cc-workbench-mobile-tabs,
+  .mobile-task-summary,
+  .workspace-mobile-nav {
+    display: none !important;
+  }
+
+  .cc-workbench,
+  .task-workbench,
+  .requirements-workbench,
+  .agents-workbench,
+  .repository-workbench,
+  .skills-workbench,
+  .knowledge-workbench,
+  .settings-layout,
+  [data-layout-region="workbench"] {
+    height: 100%;
+    min-height: 0 !important;
+    align-items: stretch;
+  }
+
+  .cc-workbench,
+  .task-workbench,
+  .requirements-workbench,
+  .agents-workbench,
+  .repository-workbench,
+  .skills-workbench,
+  .knowledge-workbench {
+    grid-template-columns: minmax(0, 1fr) var(--cc-inspector);
+    gap: var(--cc-gap);
+  }
+
+  .cc-workbench-main,
+  .cc-workbench-inspector,
+  [data-layout-region="main"],
+  [data-layout-region="inspector"] {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .cc-workbench-main {
+    display: grid;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .cc-workbench-inspector {
+    position: relative;
+    inset: auto;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .cc-workbench-inspector > .task-inspector,
+  .cc-workbench-inspector > .requirement-inspector,
+  .cc-workbench-inspector > .agent-inspector,
+  .cc-workbench-inspector > .squad-inspector,
+  .cc-workbench-inspector > .repository-inspector,
+  .cc-workbench-inspector > .skill-inspector,
+  .cc-workbench-inspector > .knowledge-inspector {
+    position: static;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .cc-workbench-inspector .inspector-heading {
+    padding-left: 50px;
+  }
+
+  .cc-workbench.is-inspector-closed,
+  .task-workbench.is-inspector-closed,
+  .requirements-workbench.is-inspector-closed,
+  .agents-workbench.is-inspector-closed,
+  .repository-workbench.is-inspector-closed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cc-workbench.is-inspector-closed > .cc-workbench-inspector,
+  .task-workbench.is-inspector-closed > .cc-workbench-inspector,
+  .requirements-workbench.is-inspector-closed > .cc-workbench-inspector,
+  .agents-workbench.is-inspector-closed > .cc-workbench-inspector,
+  .repository-workbench.is-inspector-closed > .cc-workbench-inspector {
+    display: none;
+  }
+
+  .task-inspector,
+  .requirement-inspector,
+  .agent-inspector,
+  .squad-inspector,
+  .repository-inspector,
+  .skill-inspector,
+  .knowledge-inspector {
+    position: static;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .cc-workbench-main > .task-center-column,
+  .cc-workbench-main > .requirements-main-panel,
+  .cc-workbench-main > .agents-main-panel,
+  .cc-workbench-main > .repository-main-panel,
+  .cc-workbench-main > .skills-catalog-pane,
+  .cc-workbench-main > .knowledge-main-panel,
+  .task-workbench > .task-center-column,
+  .requirements-workbench > .requirements-main-panel,
+  .agents-workbench > .agents-main-panel,
+  .repository-workbench > .repository-main-panel,
+  .skills-workbench > .skills-catalog-pane,
+  .knowledge-workbench > .knowledge-main-panel {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .task-center-column {
+    grid-template-rows: auto minmax(0, 1fr) clamp(132px, 17vh, 176px);
+  }
+
+  .task-workbench.is-inspector-closed .board-toolbar,
+  .requirements-workbench.is-inspector-closed .requirements-toolbar,
+  .agents-workbench.is-inspector-closed .agents-toolbar,
+  .repository-workbench.is-inspector-closed .repository-toolbar {
+    padding-right: 48px;
+  }
+
+  .board-overview {
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .task-groups {
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .cascade-stage {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .timeline-panel {
+    display: grid;
+    grid-template-rows: 38px minmax(0, 1fr);
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .timeline-panel > .timeline-grid {
+    height: auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .requirements-list,
+  .agent-list,
+  .repository-list,
+  .knowledge-list,
+  .skill-list,
+  [data-scroll-region] {
+    min-height: 0;
+  }
+
+  .requirements-main-panel,
+  .agents-main-panel,
+  .repository-main-panel,
+  .knowledge-main-panel,
+  .skills-catalog-pane,
+  .task-inspector,
+  .requirement-inspector,
+  .agent-inspector,
+  .squad-inspector,
+  .repository-inspector,
+  .knowledge-inspector {
+    align-self: stretch;
+  }
+
+  /* Analytics has a full-width audit section below its two-column focus area;
+     only that content region scrolls when a short desktop viewport cannot fit
+     both panels at their readable minimum heights. */
+  .analytics-page.analytics-redesign {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .analytics-page.analytics-redesign .analytics-content-scroll {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--cc-section-gap);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .analytics-page.analytics-redesign .analytics-workbench,
+  .analytics-page.analytics-redesign .analytics-main-grid {
+    min-height: clamp(438px, 50dvh, 540px);
+    height: clamp(438px, 50dvh, 540px);
+    flex: 0 0 auto;
+    align-items: stretch;
+  }
+
+  .analytics-page.analytics-redesign .analytics-focus-panel,
+  .analytics-page.analytics-redesign .analytics-inspector-panel {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .analytics-page.analytics-redesign .analytics-inspector-panel {
+    position: static;
+    max-height: none;
+    overflow: auto;
+  }
+
+  .analytics-page.analytics-redesign .analytics-audit-panel {
+    min-height: clamp(320px, 42dvh, 440px);
+    height: clamp(320px, 42dvh, 440px);
+    flex: 0 0 auto;
+    overflow: hidden;
+  }
+
+  .analytics-page.analytics-redesign .audit-table-wrap {
+    min-height: 0;
+    max-height: none;
+    height: 100%;
+    overflow: auto;
+  }
+
+  /* Settings navigation and content share one track and keep their own body
+     scrolling. The save bar remains part of the content grid rather than
+     making the entire page taller. */
+  .settings-page.settings-redesign .settings-workbench-redesign {
+    height: 100%;
+    min-height: 0 !important;
+    grid-template-columns: clamp(210px, 16vw, 260px) minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .settings-page.settings-redesign .settings-sidebar,
+  .settings-page.settings-redesign .settings-content {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .settings-page.settings-redesign .settings-sidebar {
+    position: static;
+    overflow: hidden;
+  }
+
+  .settings-page.settings-redesign .settings-content {
+    overflow: hidden;
+  }
+
+  .settings-page.settings-redesign .settings-view-panel {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .settings-page.settings-redesign .settings-nav-status {
+    margin-top: auto;
+  }
+
+  /* Workspace is a self-contained three-column surface. */
+  .workspace-page {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .workspace-grid {
+    height: 100% !important;
+    min-height: 0 !important;
+    grid-template-columns: clamp(210px, 16vw, 260px) minmax(0, 1fr) clamp(280px, 20vw, 340px);
+  }
+
+  .workspace-grid > .workspace-explorer,
+  .workspace-grid > .conversation-pane,
+  .workspace-grid > .output-pane {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .workspace-grid [data-scroll-region],
+  .workspace-grid .message-feed,
+  .workspace-grid .output-scroll {
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+@media (min-width: 1366px) and (max-width: 1599px) {
+  :root {
+    --cc-rail: 184px;
+    --cc-page-gutter: 20px;
+    --cc-inspector: clamp(320px, 22vw, 344px);
+    --cc-gap: 14px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1365px) {
+  :root {
+    --cc-rail: 72px;
+    --cc-page-gutter: 18px;
+    --cc-inspector: clamp(300px, 24vw, 320px);
+    --cc-gap: 12px;
+  }
+
+  .sidebar {
+    width: 62px;
+  }
+
+  .brand-lockup {
+    justify-content: center;
+    padding-inline: 8px;
+  }
+
+  .brand-lockup > div,
+  .nav-link span,
+  .workspace-switcher-label,
+  .workspace-switcher label select,
+  .workspace-switcher label svg:last-child,
+  .sidebar-user > div,
+  .sidebar-user > svg {
+    display: none;
+  }
+
+  .primary-nav {
+    align-items: center;
+    padding-inline: 7px;
+  }
+
+  .nav-link {
+    width: 42px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .workspace-switcher {
+    margin-inline: 7px;
+  }
+
+  .workspace-switcher label {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .sidebar-user {
+    display: flex;
+    justify-content: center;
+    padding-inline: 6px;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 800px) {
+  :root {
+    --cc-header-height: 60px;
+    --cc-section-gap: 10px;
+  }
+
+  .page-content {
+    padding-top: 8px;
+    padding-bottom: 12px;
+  }
+
+  .cc-page-header {
+    min-height: 42px;
+  }
+
+  .cc-summary-item {
+    min-height: 48px;
+    padding-block: 5px;
+  }
+}
+
+/* Keep the previous responsive fallback intact below the supported PC range. */
+@media (max-width: 900px) {
+  html,
+  body,
+  #root,
+  .app-canvas {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .app-main {
+    display: block;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .topbar {
+    height: auto;
+    min-height: var(--cc-header-height);
+  }
+
+  .page-content {
+    display: block;
+    height: auto;
+    min-height: calc(100dvh - var(--cc-header-height));
+    overflow: visible;
+  }
+
+  .tasks-page,
+  .requirements-page,
+  .agents-page,
+  .repositories-page,
+  .knowledge-page,
+  .skills-page,
+  .analytics-page,
+  .settings-page,
+  .workspace-page {
+    height: auto;
+    min-height: 0;
+  }
+
+  .cc-workbench,
+  .task-workbench,
+  .requirements-workbench,
+  .agents-workbench,
+  .repository-workbench,
+  .skills-workbench,
+  .knowledge-workbench,
+  .settings-layout,
+  [data-layout-region="workbench"] {
+    height: auto;
+    min-height: 0 !important;
+  }
+
+  .cc-workbench-main,
+  .cc-workbench-inspector,
+  [data-layout-region="main"],
+  [data-layout-region="inspector"] {
+    height: auto;
+  }
+
+  .workspace-grid {
+    height: auto !important;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Task board focus stage
+   ------------------------------------------------------------------------- */
+@media (min-width: 901px) {
+  .task-center-column {
+    /* The board row includes 3px vertical padding on each side. Keep the
+       visible cascade stage itself within the 300-422px contract. */
+    grid-template-rows: auto clamp(306px, 42dvh, 428px) minmax(132px, 1fr);
+  }
+
+  .board-overview {
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+    padding-block: 3px;
+  }
+
+  .cascade-stage {
+    /* The viewport owns the stage edge-to-edge; this rail only anchors the
+       summary, axis, and contact shadow around the focused card. */
+    --cascade-rail-width: min(720px, calc(100% - 104px));
+    height: 100%;
+    min-height: 0;
+    align-self: stretch;
+    overflow: hidden;
+  }
+
+  .cascade-stage::after {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    right: calc(50% - (var(--cascade-rail-width) / 2));
+    left: calc(50% - (var(--cascade-rail-width) / 2));
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(21, 155, 120, 0.14) 16%, rgba(21, 155, 120, 0.22) 50%, rgba(21, 155, 120, 0.14) 84%, transparent);
+    content: "";
+    pointer-events: none;
+  }
+
+  .cascade-summary {
+    top: 50%;
+    right: auto;
+    left: max(10px, calc(50% - (var(--cascade-rail-width) / 2) - 30px));
+    transform: translateY(-50%) rotateY(-3deg) rotateZ(-0.5deg) translateZ(18px);
+  }
+
+  .cascade-summary::after {
+    position: absolute;
+    top: 50%;
+    right: -30px;
+    width: 32px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(21, 155, 120, 0.24), rgba(21, 155, 120, 0));
+    content: "";
+    pointer-events: none;
+    transform: translateY(-50%);
+  }
+
+  .cascade-viewport {
+    top: 50%;
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    transform: translateY(-50%);
+    /* Keep the fade tied to the stage, not the narrower focus rail. */
+    --cascade-edge-fade: clamp(44px, 4.5vw, 72px);
+  }
+
+  .cascade-floor {
+    top: calc(50% + 58px);
+    right: calc(50% - (var(--cascade-rail-width) / 2));
+    bottom: auto;
+    left: calc(50% - (var(--cascade-rail-width) / 2));
+    height: 72px;
+  }
+
+  .cascade-controls {
+    top: auto;
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .timeline-panel {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .timeline-panel > .timeline-grid {
+    display: grid;
+    height: auto;
+    min-height: 0;
+    grid-template-rows: repeat(4, minmax(24px, 1fr));
+    align-content: stretch;
+    padding-top: 20px;
+    padding-bottom: 8px;
+  }
+
+  .timeline-row {
+    height: auto;
+    min-height: 24px;
+    box-shadow: inset 0 -1px 0 rgba(91, 124, 130, 0.045);
+  }
+
+  .timeline-row:last-child {
+    box-shadow: none;
+  }
+
+  .timeline-row > span,
+  .timeline-bar {
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+@media (min-width: 901px) and (prefers-reduced-motion: reduce) {
+  .cascade-summary {
+    transform: translateY(-50%) rotateY(-3deg) rotateZ(-0.5deg) translateZ(18px);
+  }
+
+  .cascade-card,
+  .cascade-card:hover,
+  .cascade-card.is-highlighted:hover {
+    transition: none;
+    transform: rotateX(-1deg) rotateY(-10deg) rotateZ(-1.5deg);
+  }
+
+  .cascade-card.is-highlighted,
+  .cascade-card:focus-visible {
+    transform: rotateX(-1deg) rotateY(-3deg) rotateZ(-0.5deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .cascade-stage::after,
+  .cascade-summary::after {
+    display: none;
+  }
+
+  .cascade-summary {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    transform: none;
+  }
+
+  .cascade-viewport {
+    top: auto;
+    right: 0;
+    bottom: 10px;
+    left: 0;
+    width: auto;
+    transform: none;
+  }
+
+  .cascade-floor {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 58px;
+  }
+
+  .cascade-controls {
+    top: auto;
+    right: 14px;
+    bottom: 13px;
+    display: none;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 800px) {
+  .timeline-panel > .timeline-grid {
+    padding-top: 8px;
+    padding-bottom: 2px;
+  }
+}

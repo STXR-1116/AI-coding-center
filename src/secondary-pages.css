@@ -1,0 +1,1315 @@
+/* Scoped layout pass for the analytics and settings workbenches. */
+.secondary-page {
+  --secondary-gap: 12px;
+  display: grid;
+  max-width: 1680px;
+  margin: 0 auto;
+  gap: var(--secondary-gap);
+  padding-bottom: 10px;
+}
+
+.secondary-page-header {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-soft);
+}
+
+.secondary-page-heading {
+  min-width: 0;
+}
+
+.secondary-page-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--emerald-dark);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.secondary-page-heading h2,
+.secondary-page-heading p {
+  margin: 0;
+}
+
+.secondary-page-heading h2 {
+  margin-top: 5px;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.secondary-page-heading p {
+  max-width: 660px;
+  margin-top: 6px;
+  color: var(--text-2);
+  font-size: var(--type-ui);
+  line-height: 1.5;
+}
+
+/* Analytics */
+.analytics-redesign {
+  gap: 14px;
+}
+
+.analytics-page-header {
+  grid-template-columns: minmax(0, 1fr) minmax(390px, auto);
+}
+
+.analytics-redesign .analytics-commandbar {
+  display: flex;
+  min-height: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.analytics-redesign .analytics-range-tabs {
+  margin-right: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 3px;
+  background: rgba(247, 251, 251, 0.84);
+}
+
+.analytics-redesign .analytics-range-tabs button,
+.analytics-redesign .analytics-metric-tabs button {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--text-2);
+  font-size: var(--type-meta);
+}
+
+.analytics-redesign .analytics-range-tabs button.is-active,
+.analytics-redesign .analytics-metric-tabs button.is-active {
+  color: var(--emerald-dark);
+  background: var(--emerald-soft);
+}
+
+.analytics-redesign .analytics-project-filter {
+  width: 176px;
+  max-width: 176px;
+  min-height: 34px;
+}
+
+.analytics-redesign .analytics-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.analytics-redesign .analytics-metric {
+  min-height: 76px;
+  gap: 12px;
+  border-radius: 11px;
+  padding: 11px 13px;
+  background: rgba(255, 255, 255, 0.66);
+  box-shadow: 0 6px 20px rgba(65, 96, 108, 0.07);
+}
+
+.analytics-redesign .analytics-metric-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+
+.analytics-redesign .analytics-metric > div > span {
+  font-size: 11px;
+}
+
+.analytics-redesign .analytics-metric strong {
+  margin-top: 3px;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.analytics-redesign .analytics-metric small {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.analytics-redesign .analytics-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 360px);
+  align-items: start;
+  gap: 12px;
+}
+
+.analytics-redesign .analytics-focus-panel,
+.analytics-redesign .analytics-inspector-panel,
+.analytics-redesign .analytics-audit-panel {
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-soft);
+}
+
+.analytics-redesign .analytics-focus-panel {
+  min-height: 438px;
+  padding: 16px;
+}
+
+.analytics-redesign .analytics-inspector-panel {
+  position: sticky;
+  top: calc(var(--cc-header-height) + 14px);
+  max-height: calc(100dvh - var(--cc-header-height) - 28px);
+  overflow: auto;
+  padding: 16px;
+}
+
+.analytics-redesign .analytics-panel-header {
+  margin-bottom: 14px;
+}
+
+.analytics-redesign .analytics-panel-header strong {
+  font-size: 14px;
+}
+
+.analytics-redesign .analytics-panel-header small {
+  font-size: 10px;
+}
+
+.analytics-redesign .panel-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.analytics-redesign .analytics-metric-tabs {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 3px;
+  background: rgba(247, 251, 251, 0.74);
+}
+
+.analytics-redesign .analytics-chart-summary {
+  margin-bottom: 10px;
+}
+
+.analytics-redesign .analytics-chart-summary span,
+.analytics-redesign .analytics-chart-summary small {
+  font-size: 10px;
+}
+
+.analytics-redesign .analytics-chart-summary strong {
+  font-size: 22px;
+}
+
+.analytics-redesign .analytics-bar-chart {
+  min-height: 274px;
+  padding: 20px 8px 10px;
+}
+
+.analytics-redesign .analytics-bar-column {
+  height: 230px;
+  min-width: 54px;
+}
+
+.analytics-redesign .analytics-bar-column > small,
+.analytics-redesign .analytics-bar-value,
+.analytics-redesign .analytics-chart-footer {
+  font-size: 10px;
+}
+
+.analytics-redesign .analytics-chart-footer {
+  padding-top: 11px;
+}
+
+.analytics-redesign .agent-health-list {
+  display: grid;
+  gap: 5px;
+}
+
+.analytics-redesign .agent-health-row {
+  min-height: 54px;
+  border-radius: 9px;
+  padding: 7px 8px;
+}
+
+.analytics-redesign .agent-health-main strong,
+.analytics-redesign .agent-health-stats b {
+  font-size: 11px;
+}
+
+.analytics-redesign .agent-health-main small,
+.analytics-redesign .agent-health-stats small,
+.analytics-redesign .selected-agent-summary > header span,
+.analytics-redesign .selected-agent-metrics small,
+.analytics-redesign .selected-agent-budget > span {
+  font-size: 10px;
+}
+
+.analytics-redesign .selected-agent-summary {
+  margin-top: 14px;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.analytics-redesign .selected-agent-summary > header strong {
+  font-size: 13px;
+}
+
+.analytics-redesign .selected-agent-metrics strong {
+  font-size: 16px;
+}
+
+.analytics-redesign .analytics-audit-panel {
+  min-height: 0;
+  padding: 16px;
+}
+
+.analytics-redesign .audit-panel-heading {
+  margin-bottom: 12px;
+}
+
+.analytics-redesign .audit-tools {
+  gap: 7px;
+}
+
+.analytics-redesign .audit-table-wrap {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.analytics-redesign .audit-table {
+  min-width: 760px;
+}
+
+.analytics-redesign .audit-pagination {
+  padding-top: 10px;
+  font-size: 10px;
+}
+
+/* Settings */
+.settings-redesign {
+  gap: 14px;
+}
+
+.settings-page-header {
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 520px);
+}
+
+.settings-redesign .settings-access-banner {
+  min-height: 66px;
+  border-color: rgba(40, 120, 232, 0.2);
+  border-radius: 11px;
+  padding: 9px 11px;
+  background: rgba(234, 243, 252, 0.62);
+  box-shadow: none;
+}
+
+.settings-redesign .settings-access-banner strong {
+  font-size: 12px;
+}
+
+.settings-redesign .settings-access-banner p {
+  font-size: 10px;
+}
+
+.settings-redesign .settings-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settings-summary-strip > div {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  border-radius: 11px;
+  padding: 11px 14px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 6px 20px rgba(65, 96, 108, 0.06);
+}
+
+.settings-summary-strip span,
+.settings-summary-strip strong,
+.settings-summary-strip p {
+  display: block;
+  margin: 0;
+}
+
+.settings-summary-strip span {
+  color: var(--text-2);
+  font-size: 10px;
+}
+
+.settings-summary-strip strong {
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.settings-summary-strip strong small {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.settings-summary-strip p {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 10px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.settings-redesign .settings-workbench-redesign {
+  min-height: 0;
+  grid-template-columns: 224px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 12px;
+}
+
+.settings-redesign .settings-sidebar {
+  position: sticky;
+  top: calc(var(--cc-header-height) + 14px);
+  align-self: start;
+  min-height: 420px;
+  max-height: calc(100dvh - var(--cc-header-height) - 28px);
+  overflow: auto;
+  border-radius: 13px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.settings-redesign .settings-nav > button {
+  min-height: 44px;
+  border-radius: 9px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+.settings-redesign .settings-nav-status {
+  gap: 7px;
+  padding: 14px 8px 6px;
+}
+
+.settings-redesign .settings-nav-status > span,
+.settings-redesign .settings-nav-status small {
+  font-size: 10px;
+}
+
+.settings-redesign .settings-nav-status strong {
+  font-size: 11px;
+}
+
+.settings-redesign .settings-content {
+  min-width: 0;
+  min-height: 0;
+  /* Reserve the page header, summary strip, and breathing room so the sticky
+     save bar remains visible at common laptop heights. */
+  max-height: calc(100dvh - var(--cc-header-height) - 210px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-soft);
+}
+
+.settings-redesign .settings-view-panel {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.settings-redesign .settings-view-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  min-height: 76px;
+  border-bottom-color: var(--line);
+  padding: 15px 18px;
+  background: rgba(250, 253, 253, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.settings-redesign .settings-view-header h1 {
+  font-size: 17px;
+}
+
+.settings-redesign .settings-view-header p {
+  font-size: 11px;
+}
+
+.settings-redesign .settings-warning-banner {
+  margin: 12px 16px 0;
+  padding: 11px;
+}
+
+.settings-redesign .settings-warning-banner strong,
+.settings-redesign .settings-warning-banner p {
+  font-size: 11px;
+}
+
+.settings-redesign .module-filterbar {
+  position: sticky;
+  top: 76px;
+  z-index: 1;
+  min-height: 52px;
+  border-bottom-color: var(--line);
+  padding: 9px 16px;
+  background: rgba(250, 253, 253, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.settings-redesign .module-setting-list {
+  padding: 12px 16px 18px;
+}
+
+.settings-redesign .module-setting-row {
+  min-height: 82px;
+  grid-template-columns: 42px minmax(0, 1fr) 138px auto;
+  gap: 12px;
+  border: 1px solid rgba(91, 124, 130, 0.12);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  padding: 11px 12px;
+  background: rgba(250, 253, 253, 0.7);
+}
+
+.settings-redesign .module-setting-row:last-child {
+  margin-bottom: 0;
+}
+
+.settings-redesign .module-setting-main h2 {
+  font-size: 13px;
+}
+
+.settings-redesign .module-setting-main p,
+.settings-redesign .module-setting-main small,
+.settings-redesign .module-setting-state span {
+  font-size: 10px;
+}
+
+.settings-redesign .module-setting-state strong {
+  font-size: 11px;
+}
+
+.settings-redesign .settings-config-view > .setting-section {
+  margin: 12px 16px;
+  border: 1px solid rgba(91, 124, 130, 0.13);
+  border-radius: 11px;
+  background: rgba(250, 253, 253, 0.64);
+}
+
+.settings-redesign .settings-config-view > .setting-section:first-of-type {
+  margin-top: 12px;
+}
+
+.settings-redesign .setting-section-header {
+  padding: 14px 16px 10px;
+}
+
+.settings-redesign .setting-section-header h2 {
+  font-size: 14px;
+}
+
+.settings-redesign .setting-section-header p {
+  font-size: 11px;
+}
+
+.settings-redesign .setting-section-body {
+  padding: 0 16px 12px;
+}
+
+.settings-redesign .setting-row {
+  min-height: 76px;
+  grid-template-columns: 38px minmax(0, 1fr) minmax(190px, auto);
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.settings-redesign .setting-row-copy strong {
+  font-size: 12px;
+}
+
+.settings-redesign .setting-row-copy p {
+  font-size: 10px;
+}
+
+.settings-redesign .setting-row-control {
+  min-height: 34px;
+  align-items: center;
+}
+
+.settings-redesign .settings-savebar-redesign {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  min-height: 62px;
+  border-top-color: var(--line-strong);
+  padding: 10px 16px;
+  background: rgba(248, 252, 252, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.settings-redesign .settings-savebar > div {
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  .secondary-page-header,
+  .analytics-page-header,
+  .settings-page-header {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .analytics-redesign .analytics-commandbar {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .settings-redesign .settings-access-banner {
+    width: 100%;
+  }
+}
+
+@media (max-width: 980px) {
+  .analytics-redesign .analytics-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-redesign .analytics-inspector-panel,
+  .settings-redesign .settings-sidebar {
+    position: static;
+    max-height: none;
+  }
+
+  .settings-redesign .settings-workbench-redesign {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-redesign .settings-sidebar {
+    min-height: 0;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .settings-redesign .settings-nav > button {
+    width: max-content;
+    min-width: max-content;
+  }
+
+  .settings-redesign .settings-nav-status {
+    display: none;
+  }
+
+  .settings-redesign .settings-content {
+    max-height: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .analytics-redesign .analytics-mobile-tabs {
+    display: flex;
+    width: 100%;
+    gap: 4px;
+    overflow-x: auto;
+  }
+
+  .analytics-redesign.mobile-view-trend .analytics-inspector-panel,
+  .analytics-redesign.mobile-view-trend .analytics-audit-panel,
+  .analytics-redesign.mobile-view-agents .analytics-focus-panel,
+  .analytics-redesign.mobile-view-agents .analytics-audit-panel,
+  .analytics-redesign.mobile-view-audit .analytics-workbench {
+    display: none;
+  }
+
+  .analytics-redesign.mobile-view-audit .analytics-audit-panel {
+    display: block;
+  }
+}
+
+@media (max-width: 720px) {
+  .secondary-page {
+    gap: 10px;
+  }
+
+  .secondary-page-header {
+    padding: 14px;
+  }
+
+  .secondary-page-heading h2 {
+    font-size: 20px;
+  }
+
+  .secondary-page-heading p {
+    font-size: 11px;
+  }
+
+  .analytics-redesign .analytics-commandbar {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(150px, auto);
+    align-items: stretch;
+  }
+
+  .analytics-redesign .analytics-range-tabs {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  .analytics-redesign .analytics-project-filter {
+    width: auto;
+    max-width: none;
+  }
+
+  .analytics-redesign .analytics-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-redesign .analytics-focus-panel,
+  .analytics-redesign .analytics-inspector-panel,
+  .analytics-redesign .analytics-audit-panel {
+    padding: 13px;
+  }
+
+  .analytics-redesign .analytics-panel-header,
+  .analytics-redesign .audit-panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .analytics-redesign .analytics-metric-tabs,
+  .analytics-redesign .audit-tools {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .settings-redesign .settings-summary-strip {
+    grid-template-columns: repeat(3, minmax(170px, 1fr));
+    overflow-x: auto;
+  }
+
+  .settings-summary-strip > div {
+    min-width: 170px;
+  }
+
+  .settings-redesign .module-setting-row {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+  }
+
+  .settings-redesign .module-setting-state {
+    display: none;
+  }
+
+  .settings-redesign .setting-row {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .settings-redesign .setting-row-control {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .secondary-page-header {
+    border-radius: 11px;
+    padding: 13px;
+  }
+
+  .analytics-redesign .analytics-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    min-width: 0;
+  }
+
+  .settings-redesign .settings-summary-strip {
+    display: flex;
+    min-width: 0;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .settings-redesign .settings-summary-strip > div {
+    min-width: 176px;
+    scroll-snap-align: start;
+  }
+
+  .analytics-redesign .analytics-metric {
+    min-height: 72px;
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .analytics-redesign .analytics-metric-icon {
+    width: 31px;
+    height: 31px;
+  }
+
+  .analytics-redesign .analytics-metric strong {
+    font-size: 16px;
+  }
+
+  .analytics-redesign .analytics-metric > div > span,
+  .analytics-redesign .analytics-metric small {
+    font-size: 9px;
+  }
+
+  .analytics-redesign .analytics-commandbar {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-redesign .analytics-project-filter,
+  .analytics-redesign .analytics-commandbar .button {
+    width: 100%;
+    max-width: none;
+  }
+
+  .settings-redesign .settings-access-banner {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .settings-redesign .settings-access-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .settings-redesign .settings-permission {
+    grid-column: 2;
+  }
+
+  .settings-redesign .settings-view-header {
+    padding: 13px 14px;
+  }
+
+  .settings-redesign .module-filterbar,
+  .settings-redesign .module-setting-list {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .settings-redesign .settings-config-view > .setting-section {
+    margin-right: 10px;
+    margin-left: 10px;
+  }
+
+  .settings-redesign .setting-section-body {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .settings-redesign .settings-savebar-redesign {
+    flex-wrap: wrap;
+  }
+
+  .settings-redesign .settings-savebar > div {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .secondary-page-header,
+  .analytics-redesign .analytics-metric,
+  .analytics-redesign .analytics-focus-panel,
+  .analytics-redesign .analytics-inspector-panel,
+  .analytics-redesign .analytics-audit-panel,
+  .settings-summary-strip > div,
+  .settings-redesign .settings-access-banner,
+  .settings-redesign .settings-sidebar,
+  .settings-redesign .settings-content,
+  .settings-redesign .settings-view-header,
+  .settings-redesign .module-filterbar,
+  .settings-redesign .settings-savebar-redesign {
+    background: var(--surface-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Compact chart and configuration metadata stays readable at normal PC
+   viewing distance without changing the dense information layout. */
+.analytics-redesign .analytics-chart-summary span,
+.analytics-redesign .analytics-chart-summary small,
+.analytics-redesign .analytics-bar-column > small,
+.analytics-redesign .analytics-bar-value,
+.settings-redesign .settings-nav-status > span,
+.settings-redesign .settings-nav-status small,
+.settings-redesign .module-setting-state span {
+  font-size: var(--type-micro);
+  line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .secondary-page * {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+  }
+}
+
+/* PC workbench contract: the page owns the viewport, while long content
+   scrolls inside its panel. This block intentionally starts at the supported
+   desktop width so the legacy narrow fallback remains isolated. */
+@media (min-width: 1200px) {
+  .secondary-page {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .analytics-redesign {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .analytics-redesign .analytics-content-scroll {
+    display: grid;
+    min-height: 0;
+    min-width: 0;
+    height: 100%;
+    grid-template-rows: clamp(438px, 50dvh, 540px) clamp(320px, 42dvh, 440px);
+    gap: var(--secondary-gap);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .analytics-redesign .analytics-workbench {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 22vw, 376px);
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .analytics-redesign .analytics-focus-panel,
+  .analytics-redesign .analytics-inspector-panel,
+  .analytics-redesign .analytics-audit-panel {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .analytics-redesign .analytics-focus-panel {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+
+  .analytics-redesign .analytics-inspector-panel {
+    position: static;
+    max-height: none;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+  }
+
+  .analytics-redesign .analytics-focus-panel,
+  .analytics-redesign .analytics-inspector-panel {
+    min-width: 0;
+  }
+
+  .analytics-redesign .agent-health-list {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .analytics-redesign .analytics-audit-panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+  }
+
+  .analytics-redesign .audit-table-wrap {
+    min-height: 0;
+    min-width: 0;
+    max-height: none;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .settings-redesign {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .settings-redesign .settings-workbench-redesign {
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .settings-redesign .settings-sidebar {
+    position: static;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .settings-redesign .settings-nav-status {
+    margin-top: auto;
+  }
+
+  .settings-redesign .settings-content {
+    display: grid;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: hidden;
+  }
+
+  .settings-redesign .settings-view-panel {
+    height: auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Shared Apple-style surface language for analytics and settings. Large
+   reading planes stay solid; only fixed chrome carries translucent material. */
+.analytics-redesign,
+.settings-redesign {
+  --cc-route-surface: #fbfdfd;
+  --cc-route-surface-muted: #f3f7f6;
+  --cc-route-surface-active: #e8f5f0;
+  --cc-route-chrome: rgba(248, 252, 251, 0.9);
+  --cc-route-border: rgba(72, 101, 105, 0.16);
+  --cc-route-divider: rgba(72, 101, 105, 0.1);
+  --cc-route-text-muted: #607572;
+  --cc-route-shadow: 0 8px 24px rgba(45, 73, 78, 0.055), inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.analytics-redesign .secondary-page-header,
+.settings-redesign .secondary-page-header,
+.analytics-redesign .analytics-metric,
+.settings-redesign .settings-summary-strip > div,
+.analytics-redesign .analytics-focus-panel,
+.analytics-redesign .analytics-inspector-panel,
+.analytics-redesign .analytics-audit-panel,
+.settings-redesign .settings-sidebar,
+.settings-redesign .settings-content {
+  border-color: var(--cc-route-border);
+  background: var(--cc-route-surface);
+  box-shadow: var(--cc-route-shadow);
+}
+
+.analytics-redesign .secondary-page-heading h2,
+.settings-redesign .secondary-page-heading h2 {
+  color: var(--text);
+  font-size: 23px;
+  font-weight: 720;
+  line-height: 1.18;
+}
+
+.analytics-redesign .secondary-page-heading p,
+.settings-redesign .secondary-page-heading p {
+  color: var(--cc-route-text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.analytics-redesign .analytics-metric > div > span,
+.settings-redesign .settings-summary-strip span {
+  color: var(--cc-route-text-muted);
+  font-size: 11px;
+}
+
+.analytics-redesign .analytics-metric strong,
+.settings-redesign .settings-summary-strip strong {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.analytics-redesign .analytics-metric small,
+.settings-redesign .settings-summary-strip p {
+  color: var(--cc-route-text-muted);
+  font-size: var(--type-meta);
+  line-height: 1.45;
+}
+
+.analytics-redesign .analytics-panel-header,
+.analytics-redesign .audit-panel-heading,
+.settings-redesign .settings-view-header,
+.settings-redesign .module-filterbar,
+.settings-redesign .settings-savebar-redesign {
+  border-color: var(--cc-route-divider);
+  background: var(--cc-route-chrome);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+}
+
+.analytics-redesign .analytics-focus-panel > .analytics-panel-header,
+.analytics-redesign .analytics-inspector-panel > .analytics-panel-header,
+.analytics-redesign .analytics-audit-panel > .audit-panel-heading {
+  margin: -16px -16px 12px;
+  padding: 13px 16px 12px;
+  border-bottom: 1px solid var(--cc-route-divider);
+}
+
+.analytics-redesign .analytics-panel-header strong,
+.analytics-redesign .audit-panel-heading strong {
+  color: var(--text);
+  font-size: var(--type-body-small);
+  font-weight: 680;
+}
+
+.analytics-redesign .analytics-panel-header small,
+.analytics-redesign .audit-panel-heading small {
+  color: var(--cc-route-text-muted);
+  font-size: var(--type-meta);
+  line-height: 1.4;
+}
+
+.analytics-redesign .analytics-range-tabs,
+.analytics-redesign .analytics-metric-tabs {
+  border-color: var(--cc-route-border);
+  background: var(--cc-route-surface-muted);
+}
+
+.analytics-redesign .analytics-range-tabs button,
+.analytics-redesign .analytics-metric-tabs button {
+  font-size: var(--type-ui);
+}
+
+.analytics-redesign .agent-health-list {
+  gap: 0;
+  background: var(--cc-route-surface);
+}
+
+.analytics-redesign .agent-health-row {
+  min-height: 60px;
+  border: 0;
+  border-bottom: 1px solid var(--cc-route-divider);
+  border-radius: 0;
+  padding: 9px 8px;
+  background: transparent;
+  transition: background-color var(--cc-duration-fast) var(--cc-ease-standard), box-shadow var(--cc-duration-fast) var(--cc-ease-standard);
+}
+
+.analytics-redesign .agent-health-row:hover {
+  background: var(--cc-route-surface-muted);
+}
+
+.analytics-redesign .agent-health-row.is-active {
+  background: var(--cc-route-surface-active);
+  box-shadow: inset 3px 0 0 var(--emerald);
+}
+
+.analytics-redesign .agent-health-main strong,
+.analytics-redesign .agent-health-stats b {
+  color: var(--text);
+  font-size: var(--type-ui);
+  font-weight: 680;
+}
+
+.analytics-redesign .agent-health-main small,
+.analytics-redesign .agent-health-stats small {
+  color: var(--cc-route-text-muted);
+  font-size: var(--type-micro);
+  line-height: 1.4;
+}
+
+.analytics-redesign .selected-agent-summary {
+  border-color: var(--cc-route-border);
+  background: var(--cc-route-surface-muted);
+  box-shadow: none;
+}
+
+.analytics-redesign .selected-agent-summary > header strong {
+  font-size: var(--type-body-small);
+}
+
+.analytics-redesign .selected-agent-summary > header span,
+.analytics-redesign .selected-agent-metrics small,
+.analytics-redesign .selected-agent-budget > span {
+  color: var(--cc-route-text-muted);
+  font-size: var(--type-micro);
+}
+
+.analytics-redesign .audit-table-wrap {
+  border-color: var(--cc-route-border);
+  background: var(--cc-route-surface);
+}
+
+.analytics-redesign .audit-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--cc-route-text-muted);
+  background: var(--cc-route-surface-muted);
+}
+
+.analytics-redesign .audit-table th,
+.analytics-redesign .audit-table td {
+  border-bottom-color: var(--cc-route-divider);
+  padding-block: 10px;
+  font-size: var(--type-meta);
+}
+
+.analytics-redesign .audit-table tbody tr:hover {
+  background: var(--cc-route-surface-muted);
+}
+
+.settings-redesign .settings-access-banner {
+  border-color: rgba(40, 120, 232, 0.2);
+  background: #eef6fd;
+}
+
+.settings-redesign .settings-sidebar {
+  box-shadow: var(--cc-route-shadow);
+}
+
+.settings-redesign .settings-nav > button {
+  min-height: 46px;
+  color: var(--text-2);
+  font-size: var(--type-ui);
+  font-weight: 560;
+}
+
+.settings-redesign .settings-nav > button:hover {
+  background: var(--cc-route-surface-muted);
+}
+
+.settings-redesign .settings-nav > button.is-active {
+  color: var(--emerald-dark);
+  background: var(--cc-route-surface-active);
+  box-shadow: inset 3px 0 0 var(--emerald);
+}
+
+.settings-redesign .settings-view-header h1 {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.settings-redesign .settings-view-header p,
+.settings-redesign .module-setting-main p,
+.settings-redesign .module-setting-main small,
+.settings-redesign .setting-section-header p,
+.settings-redesign .setting-row-copy p {
+  color: var(--cc-route-text-muted);
+  font-size: var(--type-ui);
+  line-height: 1.5;
+}
+
+/* Settings uses separators rather than translucent cards nested in the main
+   surface. This keeps long configuration screens visually continuous. */
+.settings-redesign .module-setting-list {
+  padding-block: 4px 18px;
+}
+
+.settings-redesign .module-setting-row {
+  min-height: 84px;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--cc-route-divider);
+  border-radius: 0;
+  padding: 12px 10px;
+  background: transparent;
+}
+
+.settings-redesign .module-setting-row:hover {
+  background: var(--cc-route-surface-muted);
+}
+
+.settings-redesign .module-setting-main h2,
+.settings-redesign .setting-section-header h2,
+.settings-redesign .setting-row-copy strong {
+  color: var(--text);
+  font-size: var(--type-body-small);
+  font-weight: 680;
+  line-height: 1.4;
+}
+
+.settings-redesign .settings-config-view > .setting-section {
+  margin-block: 0;
+  border: 0;
+  border-top: 1px solid var(--cc-route-divider);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.settings-redesign .settings-config-view > .setting-section:first-of-type {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.settings-redesign .setting-section-header {
+  padding-top: 16px;
+}
+
+.settings-redesign .setting-row {
+  min-height: 78px;
+  border-bottom-color: var(--cc-route-divider);
+}
+
+.settings-redesign .settings-savebar-redesign {
+  min-height: 64px;
+}
+
+@media (min-width: 1200px) {
+  .analytics-redesign .analytics-focus-panel,
+  .analytics-redesign .analytics-inspector-panel,
+  .analytics-redesign .analytics-audit-panel,
+  .settings-redesign .settings-sidebar,
+  .settings-redesign .settings-content {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .analytics-redesign .agent-health-list,
+  .analytics-redesign .audit-table-wrap,
+  .settings-redesign .settings-view-panel {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+
+@media (max-width: 720px) {
+  .analytics-redesign .analytics-focus-panel > .analytics-panel-header,
+  .analytics-redesign .analytics-inspector-panel > .analytics-panel-header,
+  .analytics-redesign .analytics-audit-panel > .audit-panel-heading {
+    margin: -13px -13px 10px;
+    padding: 12px 13px 10px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .analytics-redesign .analytics-panel-header,
+  .analytics-redesign .audit-panel-heading,
+  .settings-redesign .settings-view-header,
+  .settings-redesign .module-filterbar,
+  .settings-redesign .settings-savebar-redesign {
+    background: var(--cc-route-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
