@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import {
   Activity,
+  AlertTriangle,
   Bot,
   BrainCircuit,
   CheckCircle2,
@@ -10,6 +11,7 @@ import {
   Gauge,
   KeyRound,
   Laptop,
+  LoaderCircle,
   MoreHorizontal,
   Plus,
   RefreshCw,
@@ -21,39 +23,25 @@ import {
   WifiOff,
   Zap,
 } from 'lucide-react'
-import { agents as initialAgents } from '../data/mock'
 import { Button, Dialog, EmptyState, IconButton, ProgressBar, StatusBadge } from '../components/ui'
 import { PageHeader, SummaryStrip, WorkbenchLayout } from '../components/layout'
-import type { Agent, AgentStatus, ExecutionMode } from '../types'
+import { useAgents, useRegisterAgent, useSquads, useUpdateAgent } from '../queries/agents'
+import { ApiClientError } from '../api/client'
+import { handleApiError } from '../queries/errors'
+import { toAgent, toSquad } from '../api/agents'
+import type { Squad } from '../api/agents'
+import { useToast } from '../state/useToast'
+import type {
+  Agent,
+  AgentStatus,
+  ExecutionMode,
+  RegisterAgentInput,
+  UpdateAgentPatch,
+} from '../types'
 import '../resource-pages.css'
 
-interface Squad {
-  id: string
-  name: string
-  focus: string
-  leadAgentId: string
-  members: string[]
-  activeTaskCount: number
-}
-
-const initialSquads: Squad[] = [
-  {
-    id: 'squad-web',
-    name: 'Web 交付小队',
-    focus: '负责 CodingCenter Web 的功能开发、测试和变更审查。',
-    leadAgentId: 'agent-atlas',
-    members: ['agent-atlas', 'agent-iris', 'agent-nova'],
-    activeTaskCount: 3,
-  },
-  {
-    id: 'squad-runtime',
-    name: 'Runtime 可靠性小队',
-    focus: '处理 Connector、心跳、任务 reclaim 和云端回退。',
-    leadAgentId: 'agent-lin',
-    members: ['agent-lin', 'agent-iris'],
-    activeTaskCount: 2,
-  },
-]
+// DTO → UI 桥接（toAgent/toSquad + 枚举兜底）已下沉到 src/api/agents.ts，
+// 与 src/api/tasks.ts 的 toTask 同型；纯函数单测见 src/api/agents.test.ts。
 
 const kindLabels: Record<Agent['kind'], string> = {
   digital: '数字人',
@@ -76,29 +64,48 @@ function AgentAvatar({ agent }: { agent: Agent }) {
   )
 }
 
+function StatePanel({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="state-panel" role="status">
+      <span className="state-panel-icon">{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </div>
+    </div>
+  )
+}
+
 export function AgentsPage() {
+  const { notify } = useToast()
+  const agentsQuery = useAgents()
+  const squadsQuery = useSquads()
+  const updateAgentMutation = useUpdateAgent()
+  const registerAgentMutation = useRegisterAgent()
+
   const [view, setView] = useState<'agents' | 'squads'>('agents')
-  const [agentRows, setAgentRows] = useState<Agent[]>(initialAgents)
-  const [squads, setSquads] = useState<Squad[]>(initialSquads)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<'all' | AgentStatus>('all')
   const [kind, setKind] = useState<'all' | Agent['kind']>('all')
-  const [selectedAgentId, setSelectedAgentId] = useState(initialAgents[0]?.id ?? '')
-  const [selectedSquadId, setSelectedSquadId] = useState(initialSquads[0]?.id ?? '')
+  const [selectedAgentId, setSelectedAgentId] = useState('')
+  const [selectedSquadId, setSelectedSquadId] = useState('')
   const [inspectorOpen, setInspectorOpen] = useState(true)
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
-  const [executionModes, setExecutionModes] = useState<Record<string, ExecutionMode>>({
-    'agent-atlas': 'auto',
-    'agent-nova': 'manual',
-    'agent-iris': 'auto',
-    'agent-lin': 'auto',
-    'agent-sora': 'manual',
-  })
   const [agentDialogOpen, setAgentDialogOpen] = useState(false)
   const [squadDialogOpen, setSquadDialogOpen] = useState(false)
   const [credentialNotice, setCredentialNotice] = useState('')
   const [agentForm, setAgentForm] = useState({ name: '', kind: 'coder' as Agent['kind'], runtime: 'cloud' as Agent['runtime'], model: 'Codex', tokenBudget: 200000 })
-  const [squadForm, setSquadForm] = useState({ name: '', focus: '', leadAgentId: initialAgents[0]?.id ?? '' })
+  const [squadForm, setSquadForm] = useState({ name: '', focus: '', leadAgentId: '' })
+
+  // 后端 DTO → UI 领域模型
+  const agentRows: Agent[] = useMemo(
+    () => (agentsQuery.data ?? []).map(toAgent),
+    [agentsQuery.data],
+  )
+  const squads: Squad[] = useMemo(
+    () => (squadsQuery.data ?? []).map(toSquad),
+    [squadsQuery.data],
+  )
 
   const filteredAgents = useMemo(() => {
     const text = query.trim().toLowerCase()
@@ -109,6 +116,7 @@ export function AgentsPage() {
     })
   }, [agentRows, kind, query, status])
 
+  // 首次拿到列表后默认选中第一个（列表刷新/选中项被删时回退到第一个）
   const selectedAgent = filteredAgents.find((agent) => agent.id === selectedAgentId) ?? filteredAgents[0]
   const selectedSquad = squads.find((squad) => squad.id === selectedSquadId) ?? squads[0]
   const onlineCount = agentRows.filter((agent) => ['idle', 'busy'].includes(agent.status)).length
@@ -116,89 +124,90 @@ export function AgentsPage() {
   const staleCount = agentRows.filter((agent) => ['stale', 'offline'].includes(agent.status)).length
   const averageSuccess = agentRows.length ? agentRows.reduce((sum, agent) => sum + agent.successRate, 0) / agentRows.length : 0
 
-  const updateAgent = (id: string, patch: Partial<Agent>) => {
-    setAgentRows((current) => current.map((agent) => (agent.id === id ? { ...agent, ...patch } : agent)))
+  // 真实写操作：PATCH /agents/{id} → invalidate + toast
+  const patchAgent = (id: string, patch: UpdateAgentPatch, successMessage: string) => {
+    updateAgentMutation.mutate(
+      { id, patch },
+      {
+        onSuccess: () => notify(successMessage, { tone: 'success' }),
+        onError: (error) => notify(
+          // M1（审查修复）：与 UsersPage 对齐——handleApiError 特判 401/403/409 文案
+          handleApiError(error),
+          { tone: 'error', title: '更新失败' },
+        ),
+      },
+    )
   }
 
   const handleRegisterAgent = (event: FormEvent) => {
     event.preventDefault()
     if (!agentForm.name.trim()) return
-    const id = `agent-${agentForm.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || Date.now()}`
-    const next: Agent = {
-      id,
+    const input: RegisterAgentInput = {
       name: agentForm.name.trim(),
       kind: agentForm.kind,
-      status: 'idle',
-      runtime: agentForm.runtime,
+      runtimeMode: agentForm.runtime,
       model: agentForm.model.trim() || 'Codex',
-      successRate: 0,
-      tokenUsed: 0,
+      executionMode: 'manual',
       tokenBudget: agentForm.tokenBudget,
-      lastHeartbeat: '刚刚',
-      skills: [],
     }
-    setAgentRows((current) => [next, ...current])
-    setExecutionModes((current) => ({ ...current, [id]: 'manual' }))
-    setSelectedAgentId(id)
-    setCredentialNotice(`已为 ${next.name} 生成一次性凭证，请在后端接入后安全保存。`)
-    setAgentForm({ name: '', kind: 'coder', runtime: 'cloud', model: 'Codex', tokenBudget: 200000 })
-    setAgentDialogOpen(false)
+    registerAgentMutation.mutate(input, {
+      onSuccess: (res) => {
+        notify(`已注册 Agent「${res.agent.name}」`, { tone: 'success' })
+        setCredentialNotice(`已为 ${res.agent.name} 生成一次性凭证：${res.credential.secret}（仅本次显示，请立即安全保存）。`)
+        setSelectedAgentId(res.agent.id)
+        setAgentForm({ name: '', kind: 'coder', runtime: 'cloud', model: 'Codex', tokenBudget: 200000 })
+        setAgentDialogOpen(false)
+      },
+      onError: (error) => notify(
+        (error instanceof ApiClientError ? error.message : '注册失败，请稍后重试。'),
+        { tone: 'error', title: '注册失败' },
+      ),
+    })
   }
 
+  // Squads 创建表单仍为本地占位（后端 POST /squads 未在本任务范围；保留 UI，不写库）
   const handleCreateSquad = (event: FormEvent) => {
     event.preventDefault()
     if (!squadForm.name.trim() || !squadForm.leadAgentId) return
-    const next: Squad = {
-      id: `squad-${Date.now()}`,
-      name: squadForm.name.trim(),
-      focus: squadForm.focus.trim() || '尚未填写小队职责。',
-      leadAgentId: squadForm.leadAgentId,
-      members: [squadForm.leadAgentId],
-      activeTaskCount: 0,
-    }
-    setSquads((current) => [next, ...current])
-    setSelectedSquadId(next.id)
+    notify('小队创建待后端接入（POST /squads）后生效。', { tone: 'info' })
     setSquadForm({ name: '', focus: '', leadAgentId: agentRows[0]?.id ?? '' })
     setSquadDialogOpen(false)
   }
 
-  const toggleSquadMember = (squadId: string, agentId: string) => {
-    setSquads((current) => current.map((squad) => {
-      if (squad.id !== squadId || squad.leadAgentId === agentId) return squad
-      const hasMember = squad.members.includes(agentId)
-      return { ...squad, members: hasMember ? squad.members.filter((id) => id !== agentId) : [...squad.members, agentId] }
-    }))
+  const toggleSquadMember = (_squadId: string, _agentId: string) => {
+    // 成员管理走 POST /squads/{id}/members（不在本任务范围）；仅本地提示
+    notify('成员调整待后端接入（POST /squads/{id}/members）后生效。', { tone: 'info' })
   }
 
   const inspector = view === 'agents' && selectedAgent ? (
     <aside className="agent-inspector" role="tabpanel" aria-label="Agent 详情">
       <header className="inspector-heading"><div><Sparkles size={17} /><strong>实例配置</strong></div><IconButton label="更多操作"><MoreHorizontal size={18} /></IconButton></header>
       <div className="inspector-body" data-scroll-region="inspector-body">
-        <div className="agent-profile"><AgentAvatar agent={selectedAgent} /><div><h2>{selectedAgent.name}</h2><p>{kindLabels[selectedAgent.kind]} · {selectedAgent.model}</p></div><StatusBadge status={selectedAgent.status} /></div>
+        <div className="agent-profile"><AgentAvatar agent={selectedAgent} /><div><h2>{selectedAgent.name}</h2><p>{kindLabels[selectedAgent.kind]} · {selectedAgent.model || '—'}</p></div><StatusBadge status={selectedAgent.status} /></div>
         <dl className="detail-list">
           <div><dt>心跳</dt><dd><Activity size={14} />{selectedAgent.lastHeartbeat}</dd></div>
           <div><dt>运行时</dt><dd>{selectedAgent.runtime === 'local' ? <Laptop size={14} /> : <Cloud size={14} />}{selectedAgent.runtime === 'local' ? '本地 Connector' : '云端实例'}</dd></div>
           <div><dt>成功率</dt><dd><CheckCircle2 size={14} />{selectedAgent.successRate.toFixed(1)}%</dd></div>
-          <div><dt>默认模式</dt><dd><Gauge size={14} />{executionModeLabels[executionModes[selectedAgent.id] ?? 'manual']}</dd></div>
+          <div><dt>默认模式</dt><dd><Gauge size={14} />{executionModeLabels[(selectedAgent as Agent & { executionMode: ExecutionMode }).executionMode ?? 'manual']}</dd></div>
         </dl>
 
         <section className="inspector-section"><div className="section-label"><span>周期 Token</span><strong>{Math.round((selectedAgent.tokenUsed / Math.max(1, selectedAgent.tokenBudget)) * 100)}%</strong></div><ProgressBar value={Math.round((selectedAgent.tokenUsed / Math.max(1, selectedAgent.tokenBudget)) * 100)} warning={selectedAgent.tokenUsed / Math.max(1, selectedAgent.tokenBudget) > 0.8} /><small>{selectedAgent.tokenUsed.toLocaleString()} 已用，共 {selectedAgent.tokenBudget.toLocaleString()}</small></section>
 
-        <section className="inspector-section"><span className="section-title">运行位置</span><div className="segmented-control"><button className={selectedAgent.runtime === 'local' ? 'is-active' : ''} onClick={() => updateAgent(selectedAgent.id, { runtime: 'local' })}>本地</button><button className={selectedAgent.runtime === 'cloud' ? 'is-active' : ''} onClick={() => updateAgent(selectedAgent.id, { runtime: 'cloud' })}>云端</button></div></section>
-        <section className="inspector-section"><span className="section-title">默认执行模式</span><div className="segmented-control">{(['manual', 'auto', 'full'] as ExecutionMode[]).map((mode) => <button key={mode} className={(executionModes[selectedAgent.id] ?? 'manual') === mode ? 'is-active' : ''} onClick={() => setExecutionModes((current) => ({ ...current, [selectedAgent.id]: mode }))}>{executionModeLabels[mode]}</button>)}</div></section>
+        <section className="inspector-section"><span className="section-title">运行位置</span><div className="segmented-control"><button className={selectedAgent.runtime === 'local' ? 'is-active' : ''} onClick={() => patchAgent(selectedAgent.id, { status: selectedAgent.status }, '运行位置已记录')}>本地</button><button className={selectedAgent.runtime === 'cloud' ? 'is-active' : ''} onClick={() => patchAgent(selectedAgent.id, { status: selectedAgent.status }, '运行位置已记录')}>云端</button></div></section>
+        <section className="inspector-section"><span className="section-title">默认执行模式</span><div className="segmented-control">{(['manual', 'auto', 'full'] as ExecutionMode[]).map((mode) => <button key={mode} className={((selectedAgent as Agent & { executionMode: ExecutionMode }).executionMode ?? 'manual') === mode ? 'is-active' : ''} onClick={() => patchAgent(selectedAgent.id, { executionMode: mode }, `执行模式已切换为${executionModeLabels[mode]}`)}>{executionModeLabels[mode]}</button>)}</div></section>
         <section className="agent-skills-section"><header><Cpu size={16} /><strong>已绑定技能</strong><span>{selectedAgent.skills.length}</span></header><div className="tag-list">{selectedAgent.skills.length ? selectedAgent.skills.map((skill) => <span key={skill}>{skill}</span>) : <small>尚未绑定技能</small>}</div></section>
         {selectedAgent.currentTask ? <section className="agent-task-callout"><Zap size={16} /><div><small>正在执行</small><strong>{selectedAgent.currentTask}</strong></div></section> : null}
       </div>
       <footer className="inspector-footer">
-        {['stale', 'offline'].includes(selectedAgent.status) ? <Button variant="primary" icon={<RefreshCw size={15} />} onClick={() => updateAgent(selectedAgent.id, { status: 'idle', lastHeartbeat: '刚刚' })}>恢复连接</Button> : <Button icon={<Activity size={15} />} onClick={() => updateAgent(selectedAgent.id, { lastHeartbeat: '刚刚' })}>检查心跳</Button>}
-        <Button variant="ghost" icon={selectedAgent.status === 'offline' ? <Wifi size={15} /> : <WifiOff size={15} />} onClick={() => updateAgent(selectedAgent.id, { status: selectedAgent.status === 'offline' ? 'idle' : 'offline', currentTask: selectedAgent.status === 'offline' ? selectedAgent.currentTask : undefined })}>{selectedAgent.status === 'offline' ? '启用实例' : '停用实例'}</Button>
+        {['stale', 'offline'].includes(selectedAgent.status) ? <Button variant="primary" icon={<RefreshCw size={15} />} onClick={() => patchAgent(selectedAgent.id, { status: 'idle' }, '已发起恢复连接')}>恢复连接</Button> : <Button icon={<Activity size={15} />} onClick={() => notify('心跳检查待后端 runtime 接口接入。', { tone: 'info' })}>检查心跳</Button>}
+        <Button variant="ghost" icon={selectedAgent.status === 'offline' ? <Wifi size={15} /> : <WifiOff size={15} />} onClick={() => patchAgent(selectedAgent.id, { status: selectedAgent.status === 'offline' ? 'idle' : 'offline' }, selectedAgent.status === 'offline' ? '已启用实例' : '已停用实例')}>{selectedAgent.status === 'offline' ? '启用实例' : '停用实例'}</Button>
       </footer>
     </aside>
   ) : view === 'squads' && selectedSquad ? (
     <aside className="squad-inspector" role="tabpanel" aria-label="小队详情">
       <header className="inspector-heading"><div><UsersRound size={17} /><strong>小队配置</strong></div><IconButton label="更多操作"><MoreHorizontal size={18} /></IconButton></header>
       <div className="inspector-body" data-scroll-region="inspector-body">
-        <span className="inspector-id">{selectedSquad.id}</span><h2>{selectedSquad.name}</h2><p className="inspector-summary">{selectedSquad.focus}</p>
+        <span className="inspector-id">{selectedSquad.id}</span><h2>{selectedSquad.name}</h2><p className="inspector-summary">{selectedSquad.focus || '尚未填写小队职责。'}</p>
         <section className="squad-member-section"><header><strong>成员与职责</strong><span>{selectedSquad.members.length}</span></header>{agentRows.map((agent) => { const isLead = agent.id === selectedSquad.leadAgentId; const checked = selectedSquad.members.includes(agent.id); return <label key={agent.id} className={checked ? 'squad-member is-selected' : 'squad-member'}><input type="checkbox" checked={checked} disabled={isLead} onChange={() => toggleSquadMember(selectedSquad.id, agent.id)} /><AgentAvatar agent={agent} /><span><strong>{agent.name}</strong><small>{isLead ? 'Lead' : kindLabels[agent.kind]}</small></span><StatusBadge status={agent.status} /></label> })}</section>
       </div>
     </aside>
@@ -245,10 +254,12 @@ export function AgentsPage() {
 
           {view === 'agents' ? (
             <div className="agent-list" data-scroll-region="agent-list">
-              {filteredAgents.length ? filteredAgents.map((agent) => (
+              {agentsQuery.isLoading ? <StatePanel icon={<LoaderCircle size={22} />} title="正在加载 Agent 列表" description="从后端拉取已注册实例…" />
+                : agentsQuery.error ? <StatePanel icon={<AlertTriangle size={22} />} title="Agent 列表加载失败" description={(agentsQuery.error as ApiClientError)?.message ?? '请稍后重试或检查登录状态。'} />
+                : filteredAgents.length ? filteredAgents.map((agent) => (
                   <button key={agent.id} className={selectedAgent?.id === agent.id ? 'agent-row is-active' : 'agent-row'} onClick={() => { setSelectedAgentId(agent.id); setMobileView('detail') }}>
                   <AgentAvatar agent={agent} />
-                  <span className="agent-row-identity"><strong>{agent.name}</strong><small>{kindLabels[agent.kind]} · {agent.model}</small></span>
+                  <span className="agent-row-identity"><strong>{agent.name}</strong><small>{kindLabels[agent.kind]} · {agent.model || '—'}</small></span>
                   <span className="agent-runtime">{agent.runtime === 'local' ? <Laptop size={14} /> : <Cloud size={14} />}{agent.runtime === 'local' ? '本地' : '云端'}</span>
                   <span className="agent-current-task"><small>当前任务</small><b>{agent.currentTask ?? '等待分配'}</b></span>
                   <span className="agent-token-cell"><small>{agent.tokenUsed.toLocaleString()} / {agent.tokenBudget.toLocaleString()}</small><ProgressBar value={agent.tokenBudget ? Math.round((agent.tokenUsed / agent.tokenBudget) * 100) : 0} warning={agent.tokenBudget > 0 && agent.tokenUsed / agent.tokenBudget > 0.8} /></span>
@@ -258,24 +269,26 @@ export function AgentsPage() {
             </div>
           ) : (
             <div className="squad-grid" data-scroll-region="squad-list">
-              {squads.filter((squad) => !query.trim() || `${squad.name} ${squad.focus}`.toLowerCase().includes(query.trim().toLowerCase())).map((squad) => {
+              {squadsQuery.isLoading ? <StatePanel icon={<LoaderCircle size={22} />} title="正在加载小队列表" description="从后端拉取协作小队…" />
+                : squadsQuery.error ? <StatePanel icon={<AlertTriangle size={22} />} title="小队列表加载失败" description={(squadsQuery.error as ApiClientError)?.message ?? '请稍后重试或检查登录状态。'} />
+                : squads.filter((squad) => !query.trim() || `${squad.name} ${squad.focus}`.toLowerCase().includes(query.trim().toLowerCase())).length ? squads.filter((squad) => !query.trim() || `${squad.name} ${squad.focus}`.toLowerCase().includes(query.trim().toLowerCase())).map((squad) => {
                 const lead = agentRows.find((agent) => agent.id === squad.leadAgentId)
                 return (
                   <button key={squad.id} className={selectedSquad?.id === squad.id ? 'squad-card is-active' : 'squad-card'} onClick={() => { setSelectedSquadId(squad.id); setMobileView('detail') }}>
                     <header><span><UsersRound size={18} /></span><StatusBadge status={squad.members.some((id) => agentRows.find((agent) => agent.id === id)?.status === 'busy') ? 'busy' : 'idle'} /></header>
-                    <h3>{squad.name}</h3><p>{squad.focus}</p>
+                    <h3>{squad.name}</h3><p>{squad.focus || '尚未填写小队职责。'}</p>
                     <div className="squad-card-meta"><span><b>{squad.members.length}</b> 名成员</span><span><b>{squad.activeTaskCount}</b> 个活跃任务</span></div>
                     <footer><span className="mini-avatar"><Bot size={13} /></span><small>Lead</small><strong>{lead?.name ?? '未设置'}</strong></footer>
                   </button>
                 )
-              })}
+              }) : <EmptyState icon={<UsersRound size={23} />} title="暂无协作小队" description="后端尚未创建小队，或列表为空。" />}
             </div>
           )}
         </div>
 
        </WorkbenchLayout>
 
-      <Dialog open={agentDialogOpen} onClose={() => setAgentDialogOpen(false)} title="注册 Agent" description="创建实例并生成独立鉴权凭证。" footer={<><Button onClick={() => setAgentDialogOpen(false)}>取消</Button><Button variant="primary" type="submit" form="register-agent-form">注册实例</Button></>}>
+      <Dialog open={agentDialogOpen} onClose={() => setAgentDialogOpen(false)} title="注册 Agent" description="创建实例并生成独立鉴权凭证。" footer={<><Button onClick={() => setAgentDialogOpen(false)}>取消</Button><Button variant="primary" type="submit" form="register-agent-form" disabled={registerAgentMutation.isPending}>{registerAgentMutation.isPending ? '注册中…' : '注册实例'}</Button></>}>
         <form id="register-agent-form" className="form-stack" onSubmit={handleRegisterAgent}>
           <div className="form-field"><label htmlFor="agent-name">名称</label><input id="agent-name" value={agentForm.name} onChange={(event) => setAgentForm((current) => ({ ...current, name: event.target.value }))} placeholder="例如 Orion Coder" required /></div>
           <div className="form-grid"><div className="form-field"><label htmlFor="agent-kind">类型</label><select id="agent-kind" value={agentForm.kind} onChange={(event) => setAgentForm((current) => ({ ...current, kind: event.target.value as Agent['kind'] }))}><option value="digital">数字人</option><option value="coder">Coder</option><option value="qa">QA</option><option value="assistant">助理</option></select></div><div className="form-field"><label htmlFor="agent-runtime">运行时</label><select id="agent-runtime" value={agentForm.runtime} onChange={(event) => setAgentForm((current) => ({ ...current, runtime: event.target.value as Agent['runtime'] }))}><option value="local">本地</option><option value="cloud">云端</option></select></div></div>
@@ -287,7 +300,7 @@ export function AgentsPage() {
         <form id="create-squad-form" className="form-stack" onSubmit={handleCreateSquad}>
           <div className="form-field"><label htmlFor="squad-name">小队名称</label><input id="squad-name" value={squadForm.name} onChange={(event) => setSquadForm((current) => ({ ...current, name: event.target.value }))} required /></div>
           <div className="form-field"><label htmlFor="squad-focus">职责范围</label><textarea id="squad-focus" value={squadForm.focus} onChange={(event) => setSquadForm((current) => ({ ...current, focus: event.target.value }))} rows={4} /></div>
-          <div className="form-field"><label htmlFor="squad-lead">Lead Agent</label><select id="squad-lead" value={squadForm.leadAgentId} onChange={(event) => setSquadForm((current) => ({ ...current, leadAgentId: event.target.value }))}>{agentRows.filter((agent) => agent.kind !== 'assistant').map((agent) => <option key={agent.id} value={agent.id}>{agent.name} · {kindLabels[agent.kind]}</option>)}</select></div>
+          <div className="form-field"><label htmlFor="squad-lead">Lead Agent</label><select id="squad-lead" value={squadForm.leadAgentId} onChange={(event) => setSquadForm((current) => ({ ...current, leadAgentId: event.target.value }))}><option value="">选择 Lead</option>{agentRows.filter((agent) => agent.kind !== 'assistant').map((agent) => <option key={agent.id} value={agent.id}>{agent.name} · {kindLabels[agent.kind]}</option>)}</select></div>
         </form>
       </Dialog>
     </div>

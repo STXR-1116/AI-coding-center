@@ -1,9 +1,11 @@
 import { Component, Suspense, lazy, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, LoaderCircle, LockKeyhole, RotateCcw, Settings } from 'lucide-react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { RequireAuth } from './components/RequireAuth'
 import { AppShell } from './components/AppShell'
 import { Button } from './components/ui'
 import { useApp } from './state/useApp'
+import { useRealtimeEvents } from './hooks/useRealtimeEvents'
 
 const TasksPage = lazy(() => import('./pages/TasksPage').then((module) => ({ default: module.TasksPage })))
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage').then((module) => ({ default: module.WorkspacePage })))
@@ -14,6 +16,8 @@ const KnowledgePage = lazy(() => import('./pages/KnowledgePage').then((module) =
 const SkillsPage = lazy(() => import('./pages/SkillsPage').then((module) => ({ default: module.SkillsPage })))
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })))
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })))
+const UsersPage = lazy(() => import('./pages/UsersPage').then((module) => ({ default: module.UsersPage })))
+const LoginPage = lazy(() => import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })))
 
 function RouteLoading() {
   return (
@@ -90,16 +94,18 @@ function RoutedApplication() {
       <Suspense fallback={<RouteLoading />}>
         <Routes>
           <Route path="/" element={<Navigate to="/tasks" replace />} />
-          <Route path="/tasks" element={<ModuleGate moduleId="task_dispatch"><TasksPage /></ModuleGate>} />
-          <Route path="/workspace" element={<ModuleGate moduleId="repositories"><WorkspacePage /></ModuleGate>} />
-          <Route path="/workspace/:repositoryId" element={<ModuleGate moduleId="repositories"><WorkspacePage /></ModuleGate>} />
-          <Route path="/requirements" element={<RequirementsPage />} />
-          <Route path="/agents" element={<ModuleGate moduleId="agents"><AgentsPage /></ModuleGate>} />
-          <Route path="/repositories" element={<ModuleGate moduleId="repositories"><RepositoriesPage /></ModuleGate>} />
-          <Route path="/knowledge" element={<ModuleGate moduleId="knowledge"><KnowledgePage /></ModuleGate>} />
-          <Route path="/skills" element={<ModuleGate moduleId="skills"><SkillsPage /></ModuleGate>} />
-          <Route path="/analytics" element={<ModuleGate moduleId="dashboard"><AnalyticsPage /></ModuleGate>} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/tasks" element={<RequireAuth><ModuleGate moduleId="task_dispatch"><TasksPage /></ModuleGate></RequireAuth>} />
+          <Route path="/workspace" element={<RequireAuth><ModuleGate moduleId="repositories"><WorkspacePage /></ModuleGate></RequireAuth>} />
+          <Route path="/workspace/:repositoryId" element={<RequireAuth><ModuleGate moduleId="repositories"><WorkspacePage /></ModuleGate></RequireAuth>} />
+          <Route path="/requirements" element={<RequireAuth><RequirementsPage /></RequireAuth>} />
+          <Route path="/agents" element={<RequireAuth><ModuleGate moduleId="agents"><AgentsPage /></ModuleGate></RequireAuth>} />
+          <Route path="/repositories" element={<RequireAuth><ModuleGate moduleId="repositories"><RepositoriesPage /></ModuleGate></RequireAuth>} />
+          <Route path="/knowledge" element={<RequireAuth><ModuleGate moduleId="knowledge"><KnowledgePage /></ModuleGate></RequireAuth>} />
+          <Route path="/skills" element={<RequireAuth><ModuleGate moduleId="skills"><SkillsPage /></ModuleGate></RequireAuth>} />
+          <Route path="/analytics" element={<RequireAuth><ModuleGate moduleId="dashboard"><AnalyticsPage /></ModuleGate></RequireAuth>} />
+          <Route path="/users" element={<RequireAuth><UsersPage /></RequireAuth>} />
+          <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
@@ -107,6 +113,24 @@ function RoutedApplication() {
   )
 }
 
+/**
+ * RealtimeBridge — 登录后常驻订阅 SSE 实时事件（P1-7b）。
+ *
+ * 放在路由外、App 顶层：登录态（auth.user 存在）时订阅 /api/v1/events，
+ * 任务状态/进度变更自动 invalidate React Query 缓存；登出即断开。App 已在
+ * QueryClientProvider 内，故 useRealtimeEvents 内的 useQueryClient 可用。
+ */
+function RealtimeBridge() {
+  const { auth } = useApp()
+  useRealtimeEvents(!!auth.user)
+  return null
+}
+
 export function App() {
-  return <AppShell><RoutedApplication /></AppShell>
+  return (
+    <AppShell>
+      <RealtimeBridge />
+      <RoutedApplication />
+    </AppShell>
+  )
 }

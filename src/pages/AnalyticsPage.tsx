@@ -11,8 +11,8 @@ import {
   CircleDollarSign,
   Clock3,
   Filter,
-  Gauge,
   History,
+  LoaderCircle,
   Search,
   ShieldCheck,
   TimerReset,
@@ -20,23 +20,21 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react'
+import { ApiClientError } from '../api/client'
 import { Button, Dialog, ProgressBar, StatusBadge } from '../components/ui'
 import { MobileViewTabs } from '../components/layout'
-import { agents } from '../data/mock'
-import { useApp } from '../state/useApp'
+import { useAuditLogs, useDashboardSummary, useMetricsSummary, type DashboardRange } from '../queries/dashboard'
+import type {
+  AgentMetricBreakdownDto,
+  AuditLogDto,
+  DashboardSummaryDto,
+  MetricsSummaryDto,
+} from '../types'
 import '../secondary-pages.css'
 
-type RangeKey = '7d' | '30d' | '90d'
+type RangeKey = DashboardRange
 type MetricKey = 'tokens' | 'duration' | 'success' | 'executions'
-type AuditActor = 'all' | 'user' | 'agent' | 'service'
-
-interface TrendPoint {
-  label: string
-  tokens: number
-  duration: number
-  success: number
-  executions: number
-}
+type AuditActor = 'all' | 'user' | 'agent'
 
 interface AuditEvent {
   id: string
@@ -64,52 +62,15 @@ const metricLabels: Record<MetricKey, { label: string; unit: string }> = {
   executions: { label: '执行次数', unit: '次' },
 }
 
-const trendSeries: Record<RangeKey, TrendPoint[]> = {
-  '7d': [
-    { label: '周四', tokens: 13200, duration: 38, success: 91, executions: 9 },
-    { label: '周五', tokens: 18600, duration: 46, success: 94, executions: 12 },
-    { label: '周六', tokens: 9100, duration: 32, success: 96, executions: 6 },
-    { label: '周日', tokens: 7600, duration: 28, success: 100, executions: 5 },
-    { label: '周一', tokens: 22400, duration: 51, success: 88, executions: 14 },
-    { label: '周二', tokens: 27800, duration: 43, success: 95, executions: 17 },
-    { label: '今天', tokens: 24100, duration: 41, success: 93, executions: 15 },
-  ],
-  '30d': [
-    { label: '第 1 周', tokens: 63800, duration: 44, success: 92, executions: 41 },
-    { label: '第 2 周', tokens: 79200, duration: 48, success: 91, executions: 49 },
-    { label: '第 3 周', tokens: 71400, duration: 39, success: 95, executions: 46 },
-    { label: '第 4 周', tokens: 93200, duration: 42, success: 94, executions: 58 },
-    { label: '本周', tokens: 106800, duration: 41, success: 93, executions: 63 },
-  ],
-  '90d': [
-    { label: '5 月下', tokens: 118000, duration: 53, success: 88, executions: 72 },
-    { label: '6 月上', tokens: 146000, duration: 49, success: 90, executions: 86 },
-    { label: '6 月下', tokens: 172000, duration: 47, success: 91, executions: 101 },
-    { label: '7 月上', tokens: 214000, duration: 45, success: 92, executions: 126 },
-    { label: '7 月下', tokens: 238000, duration: 43, success: 94, executions: 141 },
-    { label: '8 月', tokens: 257000, duration: 41, success: 93, executions: 153 },
-  ],
-}
-
-const auditEvents: AuditEvent[] = [
-  { id: 'audit-1081', time: '今天 15:42:18', actor: 'Atlas Coder', actorType: 'agent', action: 'execute', target: 'CC-2026-031', result: 'success', projectId: 'repo-1', detail: '完成文件树安全路径检查并上报执行进度。', traceId: 'tr_2cda91f8' },
-  { id: 'audit-1080', time: '今天 15:36:04', actor: 'Brandon', actorType: 'user', action: 'assign', target: 'CC-2026-031', result: 'success', projectId: 'repo-1', detail: '将任务分配给 Atlas Coder，执行模式设为自动。', traceId: 'tr_7f302bd4' },
-  { id: 'audit-1079', time: '今天 15:20:51', actor: 'Connector', actorType: 'service', action: 'heartbeat', target: 'agent-lin', result: 'warning', projectId: 'repo-2', detail: '本地 Connector 连续三个周期未上报心跳，Agent 标记为 stale。', traceId: 'tr_d01e3cb7' },
-  { id: 'audit-1078', time: '今天 14:58:32', actor: 'Iris QA', actorType: 'agent', action: 'execute', target: 'CC-2026-027', result: 'failed', projectId: 'repo-3', detail: 'ContextDB MCP 健康检查失败，已按策略跳过知识库检索。', traceId: 'tr_f53b6c20' },
-  { id: 'audit-1077', time: '今天 14:41:09', actor: 'Nova PM', actorType: 'agent', action: 'analyze', target: 'REQ-104', result: 'success', projectId: 'repo-1', detail: '生成 Spec v2 并等待管理角色审批。', traceId: 'tr_2ebd9031' },
-  { id: 'audit-1076', time: '今天 13:16:44', actor: 'Brandon', actorType: 'user', action: 'update', target: 'repo-2', result: 'success', projectId: 'repo-2', detail: '更新 Agent Runtime 的默认分支配置。', traceId: 'tr_89a012ad' },
-  { id: 'audit-1075', time: '今天 11:03:26', actor: 'Token Meter', actorType: 'service', action: 'budget_warn', target: 'agent-atlas', result: 'warning', projectId: 'repo-1', detail: 'Atlas Coder 周期 Token 用量达到预算的 61.4%。', traceId: 'tr_3718ab95' },
-  { id: 'audit-1074', time: '昨天 18:22:10', actor: 'Ming', actorType: 'user', action: 'review', target: 'CC-2026-028', result: 'success', projectId: 'repo-1', detail: '接受任务变更审查中的两个文件。', traceId: 'tr_93caef40' },
-  { id: 'audit-1073', time: '昨天 17:40:05', actor: 'Scheduler', actorType: 'service', action: 'reclaim', target: 'CC-2026-029', result: 'warning', projectId: 'repo-2', detail: '检测到 Agent 心跳异常，任务进入待回收观察窗口。', traceId: 'tr_17b5d8a1' },
-]
-
-const durationByTask: Record<string, number> = {
-  'CC-2026-031': 48,
-  'CC-2026-030': 31,
-  'CC-2026-029': 52,
-  'CC-2026-028': 67,
-  'CC-2026-027': 44,
-  'CC-2026-026': 36,
+/** 任务状态分布项的展示名（后端 status 为字符串枚举值）。 */
+const taskStatusLabels: Record<string, string> = {
+  pending: '待处理',
+  assigned: '已分配',
+  awaiting_approval: '待审批',
+  running: '进行中',
+  succeeded: '已完成',
+  failed: '失败',
+  cancelled: '已取消',
 }
 
 function AnalyticsMetric({ icon, label, value, detail, tone }: { icon: ReactNode; label: string; value: string; detail: string; tone: string }) {
@@ -121,6 +82,18 @@ function AnalyticsMetric({ icon, label, value, detail, tone }: { icon: ReactNode
   )
 }
 
+function StatePanel({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
+  return (
+    <div className="state-panel" role="status">
+      <span className="state-panel-icon">{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </div>
+    </div>
+  )
+}
+
 function formatMetric(metric: MetricKey, value: number) {
   if (metric === 'tokens') return value >= 1000 ? `${(value / 1000).toFixed(value >= 100000 ? 0 : 1)}k` : value.toLocaleString()
   if (metric === 'success') return `${value.toFixed(0)}%`
@@ -128,51 +101,130 @@ function formatMetric(metric: MetricKey, value: number) {
   return value.toFixed(0)
 }
 
+/**
+ * 已知告警类动作——既非失败也不宜标「成功」（心跳异常、预算告警、回收等）。
+ * 后端 `AuditLogDto` 依文档契约无 `result` 字段，故按动作名启发式 + detail 解析。
+ */
+const WARNING_ACTIONS = ['heartbeat', 'budget_warn', 'reclaim', 'stale', 'warn', 'warning']
+
+/**
+ * 推断审计事件结果。优先解析 `detail`（JSON 字符串）中的 `result`/`level`/`status`
+ * 字段取真实结果；否则按动作名启发式：含 fail → failed，已知告警类 → warning，其余 success。
+ * 比纯 `/fail/i.test(action)` 二元推断更保守——不把告警类动作谎报为成功，也降低 failover
+ * /prefill 等动作名的误判。
+ */
+function inferAuditResult(log: AuditLogDto): 'success' | 'warning' | 'failed' {
+  if (log.detail) {
+    try {
+      const parsed = JSON.parse(log.detail) as Record<string, unknown>
+      const raw = String(parsed.result ?? parsed.level ?? parsed.status ?? '').toLowerCase()
+      if (raw === 'failed' || raw === 'fail' || raw === 'error') return 'failed'
+      if (raw === 'warning' || raw === 'warn') return 'warning'
+      if (raw === 'success' || raw === 'ok') return 'success'
+    } catch {
+      // detail 非 JSON——回落到动作名启发式
+    }
+  }
+  const action = log.action.toLowerCase()
+  if (/fail/i.test(log.action)) return 'failed'
+  if (WARNING_ACTIONS.some((keyword) => action.includes(keyword))) return 'warning'
+  return 'success'
+}
+
+/**
+ * Bridge a backend `MetricsSummaryDto.perAgent[]` entry to a chartable row for
+ * the trend bar chart. The backend exposes per-agent token/success/fail
+ * breakdowns rather than a daily time series, so we chart one bar per agent —
+ * preserving the existing bar-chart UI while binding it to real data.
+ */
+interface TrendPoint {
+  label: string
+  tokens: number
+  duration: number
+  success: number
+  executions: number
+}
+
+function toTrendPoints(perAgent: AgentMetricBreakdownDto[]): TrendPoint[] {
+  if (!perAgent.length) return []
+  return perAgent.map((item) => {
+    const total = item.successCount + item.failCount
+    return {
+      label: item.agentName ?? item.agentId ?? '未知 Agent',
+      tokens: item.tokenUsed,
+      // 后端无 per-agent 时长 → 用全局平均（由调用方覆盖）
+      duration: 0,
+      success: total ? (item.successCount / total) * 100 : 0,
+      executions: total,
+    }
+  })
+}
+
 export function AnalyticsPage() {
-  const { tasks, projects } = useApp()
+  const summaryQuery = useDashboardSummary()
   const [range, setRange] = useState<RangeKey>('30d')
-  const [projectId, setProjectId] = useState('all')
+  const metricsQuery = useMetricsSummary(range)
   const [metric, setMetric] = useState<MetricKey>('tokens')
   const [mobileView, setMobileView] = useState<'trend' | 'agents' | 'audit'>('trend')
   const [auditQuery, setAuditQuery] = useState('')
   const [actorType, setActorType] = useState<AuditActor>('all')
   const [auditLimit, setAuditLimit] = useState(6)
   const [selectedAudit, setSelectedAudit] = useState<AuditEvent | null>(null)
-  const [selectedAgentId, setSelectedAgentId] = useState(agents[0].id)
 
-  const scopedTasks = useMemo(
-    () => projectId === 'all' ? tasks : tasks.filter((task) => task.projectId === projectId),
-    [projectId, tasks],
-  )
-  const scopeRatio = tasks.length ? Math.max(0.18, scopedTasks.length / tasks.length) : 1
-  const rangeFactor = range === '7d' ? 0.28 : range === '90d' ? 2.7 : 1
-  const tokenTotal = Math.round(scopedTasks.reduce((total, task) => total + task.tokenUsed, 0) * rangeFactor)
-  const completed = scopedTasks.filter((task) => ['succeeded', 'failed'].includes(task.status))
-  const successRate = completed.length ? completed.filter((task) => task.status === 'succeeded').length / completed.length * 100 : 0
-  const averageDuration = scopedTasks.length
-    ? scopedTasks.reduce((total, task) => total + (durationByTask[task.id] ?? 40), 0) / scopedTasks.length
-    : 0
-  const onlineAgents = agents.filter((agent) => ['idle', 'busy'].includes(agent.status)).length
-  const budgetTotal = scopedTasks.reduce((total, task) => total + task.tokenBudget, 0)
-  const budgetUsage = budgetTotal ? scopedTasks.reduce((total, task) => total + task.tokenUsed, 0) / budgetTotal * 100 : 0
+  const summary: DashboardSummaryDto | undefined = summaryQuery.data
+  const metrics: MetricsSummaryDto | undefined = metricsQuery.data
 
-  const chartData = useMemo(() => trendSeries[range].map((point) => ({
-    ...point,
-    tokens: Math.round(point.tokens * scopeRatio),
-    executions: Math.max(1, Math.round(point.executions * scopeRatio)),
-  })), [range, scopeRatio])
+  // 全局平均时长（毫秒 → 分钟），用于 duration 维度兜底
+  const avgDurationMin = summary?.metricsSummary
+    ? summary.metricsSummary.avgDurationMs / 60000
+    : metrics?.summary
+      ? metrics.summary.avgDurationMs / 60000
+      : 0
+  const successRate = summary ? summary.successRate * 100 : 0
+  const tokenTotal = summary?.totalTokenUsed ?? 0
+  const agentsCount = summary?.agentsCount ?? 0
+  const agentsByStatus = summary?.agentsByStatus ?? []
+  const onlineAgents = agentsByStatus
+    .filter((item) => ['idle', 'busy'].includes(item.status))
+    .reduce((sum, item) => sum + item.count, 0)
+  const staleAgents = agentsByStatus
+    .filter((item) => ['stale', 'offline'].includes(item.status))
+    .reduce((sum, item) => sum + item.count, 0)
+  const tasksByStatus = summary?.tasksByStatus ?? []
+  const completedTasks = tasksByStatus
+    .filter((item) => ['succeeded', 'failed'].includes(item.status))
+    .reduce((sum, item) => sum + item.count, 0)
+
+  const chartData = useMemo<TrendPoint[]>(() => {
+    const points = toTrendPoints(metrics?.perAgent ?? [])
+    // duration 维度用全局平均填充（后端无 per-agent 时长）
+    return points.map((point) => ({ ...point, duration: avgDurationMin }))
+  }, [metrics?.perAgent, avgDurationMin])
   const maxChartValue = Math.max(...chartData.map((point) => point[metric]), metric === 'success' ? 100 : 1)
 
-  const filteredAudits = useMemo(() => {
+  // 审计日志：useAuditLogs 拉取最近一页；前端再按 actorType/搜索过滤
+  const auditQueryResult = useAuditLogs({ pageSize: 50 })
+  const auditLogs: AuditLogDto[] = auditQueryResult.data?.data ?? []
+
+  const filteredAudits = useMemo<AuditEvent[]>(() => {
     const text = auditQuery.trim().toLowerCase()
-    return auditEvents.filter((event) => {
-      if (projectId !== 'all' && event.projectId !== projectId) return false
+    return auditLogs.map((log): AuditEvent => ({
+      id: log.id,
+      time: log.createdAt,
+      actor: log.actorId,
+      actorType: (log.actorType === 'agent' ? 'agent' : 'user') as Exclude<AuditActor, 'all'>,
+      action: log.action,
+      target: log.entityId,
+      // 后端无 result 字段 → 优先解析 detail JSON，否则按动作名启发式（见 inferAuditResult）
+      result: inferAuditResult(log),
+      projectId: log.entityType,
+      detail: log.detail,
+      traceId: log.id,
+    })).filter((event) => {
       if (actorType !== 'all' && event.actorType !== actorType) return false
       return !text || `${event.actor} ${event.action} ${event.target} ${event.detail} ${event.traceId}`.toLowerCase().includes(text)
     })
-  }, [actorType, auditQuery, projectId])
-
-  const selectedAgent = agents.find((agent) => agent.id === selectedAgentId) ?? agents[0]
+  }, [actorType, auditQuery, auditLogs])
 
   const exportAudit = () => {
     const rows = [
@@ -180,12 +232,28 @@ export function AnalyticsPage() {
       ...filteredAudits.map((event) => [event.time, event.actor, event.actorType, event.action, event.target, event.result, event.traceId]),
     ]
     const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n')
-    const url = URL.createObjectURL(new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' }))
+    const url = URL.createObjectURL(new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' }))
     const anchor = document.createElement('a')
     anchor.href = url
     anchor.download = `codingcenter-audit-${range}.csv`
     anchor.click()
     URL.revokeObjectURL(url)
+  }
+
+  // 加载/错误态：summary 是页面骨架，失败时整页降级
+  if (summaryQuery.isLoading) {
+    return (
+      <div className="analytics-page secondary-page">
+        <StatePanel icon={<LoaderCircle size={22} className="spin" />} title="正在加载可观测数据" description="从后端拉取仪表盘汇总…" />
+      </div>
+    )
+  }
+  if (summaryQuery.error) {
+    return (
+      <div className="analytics-page secondary-page">
+        <StatePanel icon={<AlertTriangle size={22} />} title="可观测数据加载失败" description={(summaryQuery.error as ApiClientError)?.message ?? '请稍后重试或检查登录状态。'} />
+      </div>
+    )
   }
 
   return (
@@ -202,29 +270,21 @@ export function AnalyticsPage() {
             <button key={value} className={range === value ? 'is-active' : ''} onClick={() => setRange(value)}>{rangeLabels[value]}</button>
           ))}
         </div>
-        <label className="toolbar-select analytics-project-filter">
-          <BarChart3 size={15} />
-          <select value={projectId} onChange={(event) => { setProjectId(event.target.value); setAuditLimit(6) }} aria-label="按项目筛选">
-            <option value="all">全部项目</option>
-            {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-          </select>
-          <ChevronDown size={13} />
-        </label>
         <Button variant="secondary" size="sm" icon={<ArrowDownToLine size={15} />} onClick={exportAudit}>导出审计</Button>
         </div>
       </header>
 
       <section className="analytics-metric-grid" aria-label="核心指标">
-        <AnalyticsMetric icon={<CircleDollarSign size={21} />} label="Token 消耗" value={tokenTotal.toLocaleString()} detail={`预算使用 ${budgetUsage.toFixed(1)}%`} tone="blue" />
-        <AnalyticsMetric icon={<Clock3 size={21} />} label="平均执行时长" value={`${averageDuration.toFixed(0)} 分钟`} detail={averageDuration <= 45 ? '处于健康区间' : '需要关注长任务'} tone="violet" />
-        <AnalyticsMetric icon={<CheckCircle2 size={21} />} label="任务成功率" value={`${successRate.toFixed(1)}%`} detail={`${completed.length} 个已结束任务`} tone="green" />
-        <AnalyticsMetric icon={<Activity size={21} />} label="在线 Agent" value={`${onlineAgents} / ${agents.length}`} detail={`${agents.filter((agent) => agent.status === 'stale').length} 个心跳异常`} tone="orange" />
+        <AnalyticsMetric icon={<CircleDollarSign size={21} />} label="Token 消耗" value={tokenTotal.toLocaleString()} detail={`累计 Token 用量`} tone="blue" />
+        <AnalyticsMetric icon={<Clock3 size={21} />} label="平均执行时长" value={`${avgDurationMin.toFixed(0)} 分钟`} detail={avgDurationMin <= 45 ? '处于健康区间' : '需要关注长任务'} tone="violet" />
+        <AnalyticsMetric icon={<CheckCircle2 size={21} />} label="任务成功率" value={`${successRate.toFixed(1)}%`} detail={`${completedTasks} 个已结束任务`} tone="green" />
+        <AnalyticsMetric icon={<Activity size={21} />} label="在线 Agent" value={`${onlineAgents} / ${agentsCount}`} detail={`${staleAgents} 个心跳异常`} tone="orange" />
       </section>
 
       <MobileViewTabs
         value={mobileView}
         onChange={(value) => setMobileView(value as 'trend' | 'agents' | 'audit')}
-        options={[{ value: 'trend', label: '趋势' }, { value: 'agents', label: 'Agent', count: agents.length }, { value: 'audit', label: '审计', count: filteredAudits.length }]}
+        options={[{ value: 'trend', label: '趋势' }, { value: 'agents', label: 'Agent', count: agentsCount }, { value: 'audit', label: '审计', count: filteredAudits.length }]}
         className="analytics-mobile-tabs"
       />
 
@@ -232,16 +292,20 @@ export function AnalyticsPage() {
       <section className="analytics-main-grid analytics-workbench" aria-label="执行观测工作台" data-layout-region="workbench">
         <article className="analytics-trend-panel analytics-focus-panel" role="tabpanel" aria-label="执行趋势" data-layout-region="main">
           <header className="analytics-panel-header">
-            <div><span className="panel-icon"><BarChart3 size={17} /></span><span><strong>执行趋势</strong><small>{rangeLabels[range]}聚合数据</small></span></div>
+            <div><span className="panel-icon"><BarChart3 size={17} /></span><span><strong>执行趋势</strong><small>{rangeLabels[range]}按 Agent 聚合</small></span></div>
             <div className="analytics-metric-tabs">
               {(Object.keys(metricLabels) as MetricKey[]).map((value) => (
                 <button key={value} className={metric === value ? 'is-active' : ''} onClick={() => setMetric(value)}>{metricLabels[value].label}</button>
               ))}
             </div>
           </header>
+          {metricsQuery.isLoading ? <StatePanel icon={<LoaderCircle size={20} className="spin" />} title="正在加载度量数据" description="从后端拉取时间序列聚合…" />
+            : metricsQuery.error ? <StatePanel icon={<AlertTriangle size={20} />} title="度量数据加载失败" description={(metricsQuery.error as ApiClientError)?.message ?? '可能当前角色无 metric:read 能力。'} />
+            : (
+          <>
           <div className="analytics-chart-summary">
             <span>{metricLabels[metric].label}</span>
-            <strong>{formatMetric(metric, chartData.reduce((total, point) => total + point[metric], 0) / chartData.length)}</strong>
+            <strong>{chartData.length ? formatMetric(metric, chartData.reduce((total, point) => total + point[metric], 0) / chartData.length) : '—'}</strong>
             <small>{metric === 'tokens' || metric === 'executions' ? '周期平均' : '当前平均'}</small>
           </div>
           <div className="analytics-bar-chart" role="img" aria-label={`${metricLabels[metric].label}趋势图`}>
@@ -259,33 +323,40 @@ export function AnalyticsPage() {
             })}
           </div>
           <footer className="analytics-chart-footer">
-            <span><Zap size={14} />峰值 {formatMetric(metric, Math.max(...chartData.map((point) => point[metric])))}</span>
+            <span><Zap size={14} />峰值 {chartData.length ? formatMetric(metric, Math.max(...chartData.map((point) => point[metric]))) : '—'}</span>
             <span><TimerReset size={14} />数据每 5 分钟聚合</span>
           </footer>
+          </>
+            )}
         </article>
 
         <aside className="agent-observability-panel analytics-inspector-panel" role="tabpanel" aria-label="Agent 健康度" data-layout-region="inspector">
           <header className="analytics-panel-header">
-            <div><span className="panel-icon"><Bot size={17} /></span><span><strong>Agent 健康度</strong><small>心跳、预算与执行表现</small></span></div>
+            <div><span className="panel-icon"><Bot size={17} /></span><span><strong>Agent 健康度</strong><small>状态分布与执行表现</small></span></div>
           </header>
           <div className="agent-health-list" data-scroll-region="analytics-agent-list">
-            {agents.map((agent) => {
-              const usage = agent.tokenBudget ? agent.tokenUsed / agent.tokenBudget * 100 : 0
+            {agentsByStatus.map((item) => {
+              const label = taskStatusLabels[item.status] ?? item.status
               return (
-                <button key={agent.id} className={selectedAgent.id === agent.id ? 'agent-health-row is-active' : 'agent-health-row'} onClick={() => setSelectedAgentId(agent.id)}>
+                <div key={item.status} className="agent-health-row">
                   <span className="mini-avatar"><Bot size={13} /></span>
-                  <span className="agent-health-main"><strong>{agent.name}</strong><small>{agent.currentTask ?? '暂无执行任务'}</small></span>
-                  <span className="agent-health-stats"><b>{agent.successRate}%</b><small>{usage.toFixed(0)}% 预算</small></span>
-                  <StatusBadge status={agent.status} />
+                  <span className="agent-health-main"><strong>{label}</strong><small>{item.status}</small></span>
+                  <span className="agent-health-stats"><b>{item.count}</b><small>个实例</small></span>
+                  <StatusBadge status={item.status as 'idle' | 'busy' | 'offline' | 'stale'} />
                   <ChevronRight size={15} />
-                </button>
+                </div>
               )
             })}
+            {!agentsByStatus.length ? <div className="audit-empty"><Bot size={20} /><strong>暂无 Agent 状态数据</strong><span>稍后重试或检查 Agent 列表。</span></div> : null}
           </div>
           <div className="selected-agent-summary">
-            <header><div><strong>{selectedAgent.name}</strong><span>{selectedAgent.model} / {selectedAgent.runtime === 'local' ? '本地运行时' : '云端运行时'}</span></div><StatusBadge status={selectedAgent.status} /></header>
-            <div className="selected-agent-metrics"><span><small>成功率</small><strong>{selectedAgent.successRate}%</strong></span><span><small>Token</small><strong>{selectedAgent.tokenUsed.toLocaleString()}</strong></span><span><small>心跳</small><strong>{selectedAgent.lastHeartbeat}</strong></span></div>
-            <div className="selected-agent-budget"><span><span>周期预算</span><b>{Math.round(selectedAgent.tokenUsed / selectedAgent.tokenBudget * 100)}%</b></span><ProgressBar value={selectedAgent.tokenUsed / selectedAgent.tokenBudget * 100} warning={selectedAgent.tokenUsed / selectedAgent.tokenBudget > 0.8} /></div>
+            <header><div><strong>Agent 执行表现</strong><span>按 Agent 拆分的 Token 与成败</span></div></header>
+            <div className="selected-agent-metrics">
+              <span><small>总 Token</small><strong>{(metrics?.summary.totalTokenUsed ?? 0).toLocaleString()}</strong></span>
+              <span><small>成功</small><strong>{metrics?.summary.successCount ?? 0}</strong></span>
+              <span><small>失败</small><strong>{metrics?.summary.failCount ?? 0}</strong></span>
+            </div>
+            <div className="selected-agent-budget"><span><span>成功率</span><b>{((metrics?.summary.successRate ?? 0) * 100).toFixed(0)}%</b></span><ProgressBar value={(metrics?.summary.successRate ?? 0) * 100} /></div>
           </div>
         </aside>
       </section>
@@ -295,18 +366,21 @@ export function AnalyticsPage() {
           <div><span className="panel-icon"><ShieldCheck size={17} /></span><span><strong>审计追踪</strong><small>业务写入失败不会阻塞主流程</small></span></div>
           <div className="audit-tools">
             <label className="compact-search"><Search size={15} /><input value={auditQuery} onChange={(event) => { setAuditQuery(event.target.value); setAuditLimit(6) }} placeholder="搜索操作、对象或 Trace ID" /></label>
-            <label className="toolbar-select"><Filter size={14} /><select value={actorType} onChange={(event) => { setActorType(event.target.value as AuditActor); setAuditLimit(6) }} aria-label="操作主体"><option value="all">全部主体</option><option value="user">用户</option><option value="agent">Agent</option><option value="service">服务</option></select><ChevronDown size={13} /></label>
+            <label className="toolbar-select"><Filter size={14} /><select value={actorType} onChange={(event) => { setActorType(event.target.value as AuditActor); setAuditLimit(6) }} aria-label="操作主体"><option value="all">全部主体</option><option value="user">用户</option><option value="agent">Agent</option></select><ChevronDown size={13} /></label>
           </div>
         </header>
 
         <div className="audit-table-wrap" data-scroll-region="analytics-audit-table">
+          {auditQueryResult.isLoading ? <StatePanel icon={<LoaderCircle size={20} className="spin" />} title="正在加载审计日志" description="从后端拉取最近操作记录…" />
+            : auditQueryResult.error ? <StatePanel icon={<AlertTriangle size={20} />} title="审计日志加载失败" description={(auditQueryResult.error as ApiClientError)?.message ?? '可能当前角色无 audit:read 能力。'} />
+            : (
           <table className="audit-table">
             <thead><tr><th>时间</th><th>操作主体</th><th>动作</th><th>对象</th><th>结果</th><th><span className="sr-only">详情</span></th></tr></thead>
             <tbody>
               {filteredAudits.slice(0, auditLimit).map((event) => (
                 <tr key={event.id} onClick={() => setSelectedAudit(event)}>
                   <td><Clock3 size={13} />{event.time}</td>
-                  <td><span className={`audit-actor audit-actor-${event.actorType}`}>{event.actorType === 'user' ? <UsersRound size={13} /> : event.actorType === 'agent' ? <Bot size={13} /> : <Gauge size={13} />}</span><span><strong>{event.actor}</strong><small>{event.actorType}</small></span></td>
+                  <td><span className={`audit-actor audit-actor-${event.actorType}`}>{event.actorType === 'user' ? <UsersRound size={13} /> : <Bot size={13} />}</span><span><strong>{event.actor}</strong><small>{event.actorType}</small></span></td>
                   <td><code>{event.action}</code></td>
                   <td><strong>{event.target}</strong></td>
                   <td><span className={`audit-result audit-result-${event.result}`}>{event.result === 'success' ? <CheckCircle2 size={13} /> : event.result === 'warning' ? <AlertTriangle size={13} /> : <XCircle size={13} />}{event.result === 'success' ? '成功' : event.result === 'warning' ? '告警' : '失败'}</span></td>
@@ -315,7 +389,8 @@ export function AnalyticsPage() {
               ))}
             </tbody>
           </table>
-          {!filteredAudits.length ? <div className="audit-empty"><History size={20} /><strong>没有匹配的审计记录</strong><span>调整筛选条件后再试。</span></div> : null}
+            )}
+          {!auditQueryResult.isLoading && !auditQueryResult.error && !filteredAudits.length ? <div className="audit-empty"><History size={20} /><strong>没有匹配的审计记录</strong><span>调整筛选条件后再试。</span></div> : null}
         </div>
         {auditLimit < filteredAudits.length ? <footer className="audit-pagination"><Button variant="ghost" size="sm" onClick={() => setAuditLimit((value) => value + 4)}>加载更多</Button><span>已显示 {Math.min(auditLimit, filteredAudits.length)} / {filteredAudits.length}</span></footer> : null}
       </section>
@@ -331,7 +406,7 @@ export function AnalyticsPage() {
         {selectedAudit ? (
           <div className="audit-detail">
             <div className={`audit-detail-result audit-detail-${selectedAudit.result}`}>{selectedAudit.result === 'success' ? <CheckCircle2 size={18} /> : selectedAudit.result === 'warning' ? <AlertTriangle size={18} /> : <XCircle size={18} />}<span><strong>{selectedAudit.action}</strong><small>{selectedAudit.result === 'success' ? '操作成功完成' : selectedAudit.result === 'warning' ? '操作完成并产生告警' : '操作执行失败'}</small></span></div>
-            <dl><div><dt>主体</dt><dd>{selectedAudit.actor} ({selectedAudit.actorType})</dd></div><div><dt>对象</dt><dd>{selectedAudit.target}</dd></div><div><dt>Trace ID</dt><dd><code>{selectedAudit.traceId}</code></dd></div><div><dt>项目</dt><dd>{projects.find((project) => project.id === selectedAudit.projectId)?.name ?? selectedAudit.projectId}</dd></div></dl>
+            <dl><div><dt>主体</dt><dd>{selectedAudit.actor} ({selectedAudit.actorType})</dd></div><div><dt>对象</dt><dd>{selectedAudit.target}</dd></div><div><dt>Trace ID</dt><dd><code>{selectedAudit.traceId}</code></dd></div><div><dt>类型</dt><dd>{selectedAudit.projectId}</dd></div></dl>
             <section><strong>事件说明</strong><p>{selectedAudit.detail}</p></section>
           </div>
         ) : null}

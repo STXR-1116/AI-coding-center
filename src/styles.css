@@ -2619,6 +2619,11 @@ textarea:focus-visible {
   background: var(--amber-soft);
 }
 
+.toast-error .toast-icon {
+  color: var(--red, #dc2626);
+  background: var(--red-soft, rgba(220, 38, 38, 0.12));
+}
+
 .toast > div {
   min-width: 0;
 }
@@ -2662,6 +2667,10 @@ textarea:focus-visible {
 
 .toast-warning .toast-progress {
   background: var(--amber);
+}
+
+.toast-error .toast-progress {
+  background: #dc2626;
 }
 
 @keyframes toast-progress {

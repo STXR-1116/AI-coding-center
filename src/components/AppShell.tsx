@@ -34,6 +34,7 @@ const navItems = [
   { to: '/knowledge', label: '知识库', icon: BrainCircuit, moduleId: 'knowledge' },
   { to: '/skills', label: '技能管理', icon: Boxes, moduleId: 'skills' },
   { to: '/analytics', label: '可观测中心', icon: Activity, moduleId: 'dashboard' },
+  { to: '/users', label: '用户管理', icon: Users },
   { to: '/settings', label: '设置中心', icon: Settings },
 ]
 

@@ -11,6 +11,7 @@ import {
   Code2,
   FileJson2,
   History,
+  LoaderCircle,
   PackageCheck,
   Plus,
   RotateCcw,
@@ -20,138 +21,34 @@ import {
   Tag,
   Upload,
   UsersRound,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button, Dialog, EmptyState, IconButton } from '../components/ui'
 import { PageHeader, WorkbenchLayout } from '../components/layout'
 import { agents } from '../data/mock'
+import { ApiClientError } from '../api/client'
+import { toBoundAgentIds, toSkill } from '../api/skills'
+import type { SkillRecord } from '../api/skills'
+import {
+  useBindSkill,
+  useCreateSkill,
+  useDeprecateSkill,
+  useReactivateSkill,
+  useSkills,
+  useUnbindSkill,
+} from '../queries/skills'
+import { useToast } from '../state/useToast'
+import type { CreateSkillInput } from '../types'
 import '../resource-pages.css'
 
 type SkillCategory = 'development' | 'quality' | 'security' | 'workflow'
 type SkillStatus = 'active' | 'deprecated'
-
-interface SkillRecord {
-  id: string
-  name: string
-  description: string
-  category: SkillCategory
-  version: string
-  status: SkillStatus
-  origin: 'system' | 'custom'
-  author: string
-  updatedAt: string
-  executions: number
-  successRate: number
-  permissions: string[]
-  files: string[]
-}
 
 const categoryLabels: Record<SkillCategory, string> = {
   development: '开发',
   quality: '质量',
   security: '安全',
   workflow: '工作流',
-}
-
-const initialSkills: SkillRecord[] = [
-  {
-    id: 'repo-preview',
-    name: 'Repo Preview',
-    description: '读取受限仓库目录、预览代码文件并生成结构化上下文。',
-    category: 'development',
-    version: '2.4.1',
-    status: 'active',
-    origin: 'system',
-    author: 'Platform Team',
-    updatedAt: '今天 10:24',
-    executions: 286,
-    successRate: 96.8,
-    permissions: ['repository:read', 'artifact:read'],
-    files: ['SKILL.md', 'scripts/read-tree.ts', 'references/safety.md'],
-  },
-  {
-    id: 'test-runner',
-    name: 'Test Runner',
-    description: '识别项目测试框架，执行关键测试并整理失败上下文。',
-    category: 'quality',
-    version: '1.8.0',
-    status: 'active',
-    origin: 'system',
-    author: 'QA Platform',
-    updatedAt: '昨天 18:40',
-    executions: 194,
-    successRate: 93.4,
-    permissions: ['repository:read', 'sandbox:execute'],
-    files: ['SKILL.md', 'scripts/detect-runner.ts'],
-  },
-  {
-    id: 'api-contract',
-    name: 'API Contract',
-    description: '根据接口契约检查请求、响应、错误码和兼容性风险。',
-    category: 'quality',
-    version: '1.5.3',
-    status: 'active',
-    origin: 'custom',
-    author: 'Iris QA',
-    updatedAt: '2 天前',
-    executions: 128,
-    successRate: 95.1,
-    permissions: ['repository:read', 'network:restricted'],
-    files: ['SKILL.md', 'references/openapi-checklist.md'],
-  },
-  {
-    id: 'secure-paths',
-    name: 'Secure Paths',
-    description: '审查目录穿越、命令参数化和仓库边界保护。',
-    category: 'security',
-    version: '1.2.2',
-    status: 'active',
-    origin: 'custom',
-    author: 'Security Guild',
-    updatedAt: '2026-08-01',
-    executions: 72,
-    successRate: 98.6,
-    permissions: ['repository:read'],
-    files: ['SKILL.md', 'scripts/audit-paths.ts'],
-  },
-  {
-    id: 'task-decomposer',
-    name: 'Task Decomposer',
-    description: '把已确认需求拆成可独立执行、可验收的任务序列。',
-    category: 'workflow',
-    version: '3.0.0',
-    status: 'active',
-    origin: 'system',
-    author: 'Nova PM',
-    updatedAt: '2026-07-29',
-    executions: 341,
-    successRate: 97.2,
-    permissions: ['requirement:read', 'task:write'],
-    files: ['SKILL.md', 'references/task-schema.md'],
-  },
-  {
-    id: 'legacy-commit-summary',
-    name: 'Legacy Commit Summary',
-    description: '旧版提交记录摘要器，已由 Repo Preview 的审查能力替代。',
-    category: 'workflow',
-    version: '0.9.4',
-    status: 'deprecated',
-    origin: 'custom',
-    author: 'Platform Team',
-    updatedAt: '2026-07-12',
-    executions: 58,
-    successRate: 86.2,
-    permissions: ['repository:read'],
-    files: ['SKILL.md'],
-  },
-]
-
-const initialBindings: Record<string, string[]> = {
-  'repo-preview': ['agent-atlas'],
-  'test-runner': ['agent-atlas', 'agent-iris'],
-  'api-contract': ['agent-iris'],
-  'secure-paths': ['agent-atlas', 'agent-lin'],
-  'task-decomposer': ['agent-nova'],
-  'legacy-commit-summary': [],
 }
 
 function SummaryCard({ icon, label, value, detail }: { icon: ReactNode; label: string; value: string | number; detail: string }) {
@@ -167,16 +64,48 @@ function SummaryCard({ icon, label, value, detail }: { icon: ReactNode; label: s
   )
 }
 
+function StatePanel({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="state-panel" role="status">
+      <span className="state-panel-icon">{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </div>
+    </div>
+  )
+}
+
 export function SkillsPage() {
-  const [skills, setSkills] = useState(initialSkills)
-  const [bindings, setBindings] = useState(initialBindings)
+  const { notify } = useToast()
+  const skillsQuery = useSkills()
+  const createMutation = useCreateSkill()
+  const deprecateMutation = useDeprecateSkill()
+  const reactivateMutation = useReactivateSkill()
+  const bindMutation = useBindSkill()
+  const unbindMutation = useUnbindSkill()
+
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<'all' | SkillCategory>('all')
   const [status, setStatus] = useState<'all' | SkillStatus>('all')
-  const [selectedId, setSelectedId] = useState(initialSkills[0].id)
+  const [selectedId, setSelectedId] = useState('')
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
   const [createOpen, setCreateOpen] = useState(false)
   const [draft, setDraft] = useState({ name: '', description: '', category: 'development' as SkillCategory })
+
+  // 后端 DTO → UI 领域模型；列表一次性返回 SkillDetail（含 manifest + boundAgents）
+  const skills: SkillRecord[] = useMemo(
+    () => (skillsQuery.data ?? []).map(toSkill),
+    [skillsQuery.data],
+  )
+  // 绑定关系从每个 skill detail 的 boundAgents 派生（id 列表）
+  const bindings = useMemo<Record<string, string[]>>(() => {
+    const map: Record<string, string[]> = {}
+    for (const dto of skillsQuery.data ?? []) {
+      map[dto.id] = toBoundAgentIds(dto)
+    }
+    return map
+  }, [skillsQuery.data])
 
   const filteredSkills = useMemo(() => {
     const text = query.trim().toLowerCase()
@@ -187,6 +116,7 @@ export function SkillsPage() {
     })
   }, [category, query, skills, status])
 
+  // 首次拿到列表后默认选中第一个（列表刷新/选中项被删时回退到第一个）
   const selectedSkill = filteredSkills.find((skill) => skill.id === selectedId) ?? filteredSkills[0]
   const boundAgentIds = selectedSkill ? bindings[selectedSkill.id] ?? [] : []
   const activeCount = skills.filter((skill) => skill.status === 'active').length
@@ -195,55 +125,61 @@ export function SkillsPage() {
     ? skills.reduce((total, skill) => total + skill.successRate, 0) / skills.length
     : 0
 
-  const toggleBinding = (skillId: string, agentId: string) => {
-    setBindings((current) => {
-      const existing = current[skillId] ?? []
-      return {
-        ...current,
-        [skillId]: existing.includes(agentId)
-          ? existing.filter((id) => id !== agentId)
-          : [...existing, agentId],
-      }
-    })
+  // 绑定/解绑：POST/DELETE /skills/{id}/agents/{agentId} → invalidate + toast
+  const toggleBinding = (skillId: string, agentId: string, bound: boolean) => {
+    const mutation = bound ? unbindMutation : bindMutation
+    mutation.mutate(
+      { skillId, agentId },
+      {
+        onSuccess: () => notify(bound ? '已解绑 Agent' : '已绑定 Agent', { tone: 'success' }),
+        onError: (error) => notify(
+          (error instanceof ApiClientError ? error.message : '绑定操作失败，请稍后重试。'),
+          { tone: 'error', title: '操作失败' },
+        ),
+      },
+    )
   }
 
-  const toggleDeprecated = (skillId: string) => {
-    setSkills((current) => current.map((skill) => (
-      skill.id === skillId
-        ? { ...skill, status: skill.status === 'active' ? 'deprecated' : 'active', updatedAt: '刚刚' }
-        : skill
-    )))
+  // 废弃/恢复：POST /skills/{id}/deprecate | /reactivate → invalidate + toast
+  const toggleDeprecated = (skill: SkillRecord) => {
+    const isDeprecated = skill.status === 'deprecated'
+    const mutation = isDeprecated ? reactivateMutation : deprecateMutation
+    mutation.mutate(skill.id, {
+      onSuccess: () => notify(isDeprecated ? `已恢复 Skill「${skill.name}」` : `已废弃 Skill「${skill.name}」`, { tone: 'success' }),
+      onError: (error) => notify(
+        (error instanceof ApiClientError ? error.message : '操作失败，请稍后重试。'),
+        { tone: 'error', title: '操作失败' },
+      ),
+    })
   }
 
   const createSkill = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const name = draft.name.trim()
     if (!name) return
-    const baseId = name.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '') || 'custom-skill'
-    const id = skills.some((skill) => skill.id === baseId) ? `${baseId}-${skills.length + 1}` : baseId
-    const newSkill: SkillRecord = {
-      id,
-      name,
+    // manifest 为 JSON 字符串（后端校验合法 JSON + 大小上限；version 初始 1.0.0，status active）
+    const manifest = JSON.stringify({
       description: draft.description.trim() || '尚未补充能力说明。',
       category: draft.category,
-      version: '0.1.0',
-      status: 'active',
-      origin: 'custom',
-      author: 'Brandon',
-      updatedAt: '刚刚',
-      executions: 0,
-      successRate: 0,
       permissions: ['sandbox:execute'],
       files: ['SKILL.md'],
-    }
-    setSkills((current) => [newSkill, ...current])
-    setBindings((current) => ({ ...current, [id]: [] }))
-    setSelectedId(id)
-    setCategory('all')
-    setStatus('all')
-    setQuery('')
-    setDraft({ name: '', description: '', category: 'development' })
-    setCreateOpen(false)
+    })
+    const input: CreateSkillInput = { name, manifest }
+    createMutation.mutate(input, {
+      onSuccess: (dto) => {
+        notify(`已创建 Skill「${dto.name}」`, { tone: 'success' })
+        setSelectedId(dto.id)
+        setCategory('all')
+        setStatus('all')
+        setQuery('')
+        setDraft({ name: '', description: '', category: 'development' })
+        setCreateOpen(false)
+      },
+      onError: (error) => notify(
+        (error instanceof ApiClientError ? error.message : '创建失败，请稍后重试。'),
+        { tone: 'error', title: '创建失败' },
+      ),
+    })
   }
 
   const inspector = selectedSkill ? (
@@ -284,7 +220,7 @@ export function SkillsPage() {
                     aria-label={`${checked ? '解绑' : '绑定'} ${agent.name}`}
                     className={checked ? 'toggle-switch is-on' : 'toggle-switch'}
                     disabled={selectedSkill.status === 'deprecated'}
-                    onClick={() => toggleBinding(selectedSkill.id, agent.id)}
+                    onClick={() => toggleBinding(selectedSkill.id, agent.id, checked)}
                   ><span /></button>
                 </div>
               )
@@ -294,7 +230,7 @@ export function SkillsPage() {
 
         <section className="skill-detail-section">
           <header><div><ShieldCheck size={16} /><strong>沙箱权限</strong></div></header>
-          <div className="skill-token-list">{selectedSkill.permissions.map((permission) => <code key={permission}>{permission}</code>)}</div>
+          <div className="skill-token-list">{selectedSkill.permissions.length ? selectedSkill.permissions.map((permission) => <code key={permission}>{permission}</code>) : <small>未声明权限</small>}</div>
         </section>
 
         <section className="skill-detail-section">
@@ -314,7 +250,8 @@ export function SkillsPage() {
         <Button
           variant={selectedSkill.status === 'active' ? 'danger' : 'secondary'}
           icon={selectedSkill.status === 'active' ? <Archive size={15} /> : <RotateCcw size={15} />}
-          onClick={() => toggleDeprecated(selectedSkill.id)}
+          disabled={deprecateMutation.isPending || reactivateMutation.isPending}
+          onClick={() => toggleDeprecated(selectedSkill)}
         >{selectedSkill.status === 'active' ? '废弃此版本' : '恢复此版本'}</Button>
       </footer>
     </aside>
@@ -374,7 +311,9 @@ export function SkillsPage() {
           </div>
 
           <div className="skill-list" role="list" data-scroll-region="skill-list">
-            {filteredSkills.length ? filteredSkills.map((skill) => {
+            {skillsQuery.isLoading ? <StatePanel icon={<LoaderCircle size={22} />} title="正在加载技能列表" description="从后端拉取已注册 Skill…" />
+              : skillsQuery.error ? <StatePanel icon={<AlertTriangle size={22} />} title="技能列表加载失败" description={(skillsQuery.error as ApiClientError)?.message ?? '请稍后重试或检查登录状态。'} />
+              : filteredSkills.length ? filteredSkills.map((skill) => {
               const isSelected = selectedSkill?.id === skill.id
               const agentCount = bindings[skill.id]?.length ?? 0
               return (
@@ -395,7 +334,7 @@ export function SkillsPage() {
                 </button>
               )
             }) : (
-              <EmptyState icon={<Search size={22} />} title="没有匹配的 Skill" description="调整关键词、分类或状态筛选。" />
+              <EmptyState icon={<Search size={22} />} title="没有匹配的 Skill" description="调整关键词、分类或状态筛选，或上传一个新的 Skill。" />
             )}
           </div>
         </div>
@@ -406,11 +345,11 @@ export function SkillsPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         title="上传 Skill"
-        description="创建后版本固定为 0.1.0，可在详情中绑定 Agent。"
+        description="创建后版本固定为 1.0.0，可在详情中绑定 Agent。"
         footer={(
           <>
             <Button variant="ghost" onClick={() => setCreateOpen(false)}>取消</Button>
-            <Button variant="primary" type="submit" form="create-skill-form" icon={<Check size={15} />}>创建 Skill</Button>
+            <Button variant="primary" type="submit" form="create-skill-form" icon={<Check size={15} />} disabled={createMutation.isPending}>{createMutation.isPending ? '创建中…' : '创建 Skill'}</Button>
           </>
         )}
       >

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import {
   AlertTriangle,
   Activity,
@@ -30,9 +31,12 @@ import {
   Zap,
 } from 'lucide-react'
 import { useApp } from '../state/useApp'
+import { useCapability } from '../state/useCapability'
 import { useToast } from '../state/useToast'
+import { useInfiniteTasks, useExecuteTask, useApproveTask, useCancelTask, handleApiError } from '../queries/tasks'
+import { toTask } from '../api/tasks'
 import type { ExecutionMode, Task, TaskEvent, TaskStatus } from '../types'
-import { Button, IconButton, PriorityBadge, ProgressBar, StatusBadge } from '../components/ui'
+import { Button, Dialog, IconButton, PriorityBadge, ProgressBar, StatusBadge } from '../components/ui'
 import { PageHeader, SummaryStrip, WorkbenchLayout } from '../components/layout'
 
 const statusOrder: TaskStatus[] = ['awaiting_approval', 'running', 'assigned', 'pending', 'failed', 'succeeded', 'cancelled']
@@ -208,6 +212,7 @@ function ProjectCascade({ tasks, onSelect }: { tasks: Task[]; onSelect: (task: T
 }
 
 function Timeline({ tasks, onSelect }: { tasks: Task[]; onSelect: (task: Task) => void }) {
+  // 空列表保护：tasks.length 不足时对应行为空（渲染占位按钮，避免 undefined.title 崩溃）
   const rows = [
     { label: '需求与评审', color: 'blue', task: tasks[1], width: '34%', left: '7%' },
     { label: '交互与架构', color: 'cyan', task: tasks[2], width: '43%', left: '29%' },
@@ -228,8 +233,8 @@ function Timeline({ tasks, onSelect }: { tasks: Task[]; onSelect: (task: Task) =
         {rows.map((row) => (
           <div className="timeline-row" key={row.label}>
             <span>{row.label}</span>
-            <button className={`timeline-bar timeline-${row.color}`} style={{ width: row.width, left: row.left }} onClick={() => onSelect(row.task)}>
-              {row.task.title}<small>{row.task.progress}%</small>
+            <button className={`timeline-bar timeline-${row.color}`} style={{ width: row.width, left: row.left }} onClick={() => row.task && onSelect(row.task)}>
+              {row.task ? <>{row.task.title}<small>{row.task.progress}%</small></> : <small>暂无任务</small>}
             </button>
           </div>
         ))}
@@ -261,40 +266,70 @@ function TaskEventTimeline({ events }: { events: TaskEvent[] }) {
   )
 }
 
-function TaskInspector({ task }: { task: Task }) {
-  const { updateTaskMode, updateTaskStatus } = useApp()
+function TaskInspector({ task, onViewResult }: { task: Task; onViewResult: (task: Task) => void }) {
+  const canExecute = useCapability('task:execute')
+  const canCancel = useCapability('task:cancel')
   const { notify } = useToast()
+  const executeMutation = useExecuteTask()
+  const approveMutation = useApproveTask()
+  const cancelMutation = useCancelTask()
   const modes: { value: ExecutionMode; label: string }[] = [
     { value: 'manual', label: '手动' },
     { value: 'auto', label: '自动' },
     { value: 'full', label: '全权' },
   ]
 
+  // 后端按 角色+状态 算好的资源级动作集驱动写按钮；旧/mock 数据无该字段时兜底空数组。
+  // useCapability 仅作兜底：allowedActions 为空但角色仍有 task:execute 权限时按钮仍可见。
+  const actions = task.allowedActions ?? []
+  const canApprove = actions.includes('approve')
+  const canExecuteAction = actions.includes('execute')
+  const canCancelAction = actions.includes('cancel')
+  // 终态（succeeded/cancelled）不显示主按钮——allowedActions 后端已排除，useCapability 兜底时需显式排除
+  const isTerminal = task.status === 'succeeded' || task.status === 'cancelled'
+  const showPrimary = !isTerminal && ((canApprove || canExecuteAction) || canExecute)
+
+  // 主按钮分派（P3-8b）：canApprove（awaiting_approval）→ 独立审批端点；
+  // 其他 → POST /tasks/{id}/execute（assigned 启动执行）。
   const primaryAction = () => {
-    if (task.status === 'awaiting_approval') {
-      updateTaskStatus(task.id, 'assigned')
-      notify('审批已通过，任务进入 Agent 分配队列。', { title: '任务已批准' })
-    } else if (task.status === 'assigned' || task.status === 'pending' || task.status === 'failed') {
-      updateTaskStatus(task.id, 'running')
-      notify('Agent 已开始执行，新的执行事件已写入时间线。', { title: '任务已启动' })
-    } else if (task.status === 'running') {
-      updateTaskStatus(task.id, 'succeeded')
-      notify('任务已完成，可继续检查结果与文件变更。', { title: '任务已完成' })
+    if (canApprove) {
+      approveMutation.mutateAsync(task.id).then((result) => {
+        if (result.status === 'awaiting_approval') {
+          notify('审批已提交，等待执行资源就绪。', { title: '审批已通过' })
+        } else {
+          notify('审批通过，任务已启动。', { title: '审批已通过' })
+        }
+      }).catch((error: unknown) => {
+        notify(handleApiError(error), { tone: 'error' })
+      })
+      return
     }
+    executeMutation.mutateAsync(task.id).then(({ task: result }) => {
+      if (result.status === 'awaiting_approval') {
+        notify('任务已进入审批队列，等待审批通过后执行。', { title: '任务已提交' })
+      } else {
+        notify('任务已启动。', { title: '任务已启动' })
+      }
+    }).catch((error: unknown) => {
+      notify(handleApiError(error), { tone: 'error' })
+    })
   }
 
-  const changeMode = (mode: ExecutionMode) => {
-    updateTaskMode(task.id, mode)
-    notify(`执行模式已切换为${modes.find((item) => item.value === mode)?.label ?? mode}。`, { title: '执行策略已更新', tone: 'info' })
+  // 后端 PATCH /tasks/{id} 暂不支持 executionMode（仅 tokenBudget）——诚实提示，不再调用 mock。
+  const changeMode = (_mode: ExecutionMode) => {
+    notify('执行模式暂不支持在线修改，将在后续版本支持。', { tone: 'info' })
   }
 
   const cancelTask = () => {
-    updateTaskStatus(task.id, 'cancelled')
-    notify('任务已停止，未完成的执行资源将被释放。', { title: '任务已取消', tone: 'warning' })
+    cancelMutation.mutateAsync(task.id).then(() => {
+      notify('任务已停止，未完成的执行资源将被释放。', { title: '任务已取消', tone: 'warning' })
+    }).catch((error: unknown) => {
+      notify(handleApiError(error), { tone: 'error' })
+    })
   }
 
-  const primaryLabel = task.status === 'awaiting_approval' ? '批准执行' : task.status === 'running' ? '标记完成' : '开始执行'
-  const primaryIcon = task.status === 'awaiting_approval' ? <Check size={15} /> : task.status === 'running' ? <CheckCircle2 size={15} /> : <Play size={15} />
+  const primaryLabel = canApprove ? '批准执行' : '开始执行'
+  const primaryIcon = canApprove ? <Check size={15} /> : <Play size={15} />
 
   return (
     <aside className="task-inspector" role="tabpanel" aria-label="任务详情">
@@ -349,13 +384,13 @@ function TaskInspector({ task }: { task: Task }) {
         </section>
       </div>
       <footer className="inspector-footer">
-        {['pending', 'assigned', 'awaiting_approval', 'running', 'failed'].includes(task.status) ? (
-          <Button variant="primary" icon={primaryIcon} onClick={primaryAction}>{primaryLabel}</Button>
+        {showPrimary ? (
+          <Button variant="primary" icon={primaryIcon} onClick={primaryAction} disabled={executeMutation.isPending || cancelMutation.isPending}>{primaryLabel}</Button>
         ) : (
-          <Button variant="secondary" icon={<GitCommitHorizontal size={15} />}>查看结果</Button>
+          <Button variant="secondary" icon={<GitCommitHorizontal size={15} />} onClick={() => onViewResult(task)} disabled={!task.result}>查看结果</Button>
         )}
-        {!['succeeded', 'cancelled'].includes(task.status) ? (
-          <Button variant="ghost" icon={<X size={15} />} onClick={cancelTask}>取消</Button>
+        {(canCancelAction || canCancel) ? (
+          <Button variant="ghost" icon={<X size={15} />} onClick={cancelTask} disabled={cancelMutation.isPending || executeMutation.isPending}>取消</Button>
         ) : null}
       </footer>
     </aside>
@@ -363,26 +398,61 @@ function TaskInspector({ task }: { task: Task }) {
 }
 
 export function TasksPage() {
-  const { tasks } = useApp()
+  const { user } = useApp()
   const [scope, setScope] = useState<'all' | 'mine' | 'assigned'>('all')
   const [status, setStatus] = useState<'all' | TaskStatus>('all')
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [sortNewest, setSortNewest] = useState(true)
-  const [selectedId, setSelectedId] = useState(tasks[0]?.id)
   const [inspectorOpen, setInspectorOpen] = useState(true)
+  // P3-5：真实执行结果查看（runner 回传 output → result Dialog）
+  const [resultTask, setResultTask] = useState<Task | null>(null)
   const [mobileView, setMobileView] = useState<'board' | 'detail' | 'timeline'>('board')
 
+  // Debounce the search box so each keystroke doesn't fire a backend request;
+  // status is a select, so it can drive the query directly.
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedQuery(query.trim()), 300)
+    return () => window.clearTimeout(handle)
+  }, [query])
+
+  // Infinite (cursor-paginated) task list for the "加载更多" button (P3-1).
+  // The query key embeds the status+q filters, so a filter change produces a
+  // new key → React Query starts a fresh infinite query automatically (no manual
+  // refetch needed). `limit` is the per-page size; pages are merged below.
+  const tasksQuery = useInfiniteTasks({
+    status: status === 'all' ? undefined : status,
+    q: debouncedQuery || undefined,
+    limit: 20,
+  })
+
+  // Merge every loaded page into one flat TaskDto list, then normalize into the
+  // UI-domain Task model the views already consume. Empty/pending → [] keeps
+  // downstream renders stable.
+  const tasks: Task[] = useMemo(
+    () => (tasksQuery.data?.pages.flatMap((page) => page.data) ?? []).map(toTask),
+    [tasksQuery.data],
+  )
+
+  const [selectedId, setSelectedId] = useState<string | undefined>(tasks[0]?.id)
+  // Once data loads, default to the first task if nothing is selected yet.
+  useEffect(() => {
+    setSelectedId((current) => current ?? tasks[0]?.id)
+  }, [tasks])
+
+  // scope is a frontend-only filter (all / mine / assigned) layered on top of
+  // the backend status+q filtering. sortNewest re-sorts by updatedAt since the
+  // REST list is ordered by createdAt desc.
   const filtered = useMemo(() => {
-    const text = query.trim().toLowerCase()
     let result = tasks.filter((task) => {
-      if (status !== 'all' && task.status !== status) return false
-      if (scope === 'mine' && task.assignee !== 'Atlas Coder') return false
-      if (scope === 'assigned' && ['pending', 'cancelled', 'succeeded'].includes(task.status)) return false
-      return !text || `${task.id} ${task.title} ${task.projectName} ${task.assignee}`.toLowerCase().includes(text)
+      if (scope === 'mine' && task.assignee !== user.name) return false
+      if (scope === 'assigned' && !task.assignee) return false
+      return true
     })
-    if (!sortNewest) result = [...result].reverse()
+    if (sortNewest) result = [...result].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    else result = [...result].reverse()
     return result
-  }, [query, scope, sortNewest, status, tasks])
+  }, [tasks, scope, sortNewest, user.name])
 
   const selected = tasks.find((task) => task.id === selectedId) ?? filtered[0] ?? tasks[0]
   const selectTask = (taskId: string, view: 'detail' | 'timeline' = 'detail') => {
@@ -414,7 +484,7 @@ export function TasksPage() {
 
       <WorkbenchLayout
         className="task-workbench"
-        inspector={selected ? <TaskInspector task={selected} /> : null}
+        inspector={selected ? <TaskInspector task={selected} onViewResult={setResultTask} /> : null}
         inspectorOpen={inspectorOpen}
         onToggleInspector={() => setInspectorOpen((value) => !value)}
         mobileView={mobileView}
@@ -449,6 +519,11 @@ export function TasksPage() {
               )) : (
                 <div className="task-filter-empty"><CircleDashed size={24} /><strong>没有匹配任务</strong><span>调整筛选条件后再试</span></div>
               )}
+              {tasksQuery.hasNextPage && tasks.length > 0 ? (
+                <button className="load-more-button" disabled={tasksQuery.isFetchingNextPage} onClick={() => { void tasksQuery.fetchNextPage() }}>
+                  {tasksQuery.isFetchingNextPage ? '加载中…' : `加载更多（已显示 ${tasks.length} 条）`}
+                </button>
+              ) : null}
             </div>
             <ProjectCascade tasks={tasks} onSelect={(task) => selectTask(task.id)} />
           </div>
@@ -458,11 +533,20 @@ export function TasksPage() {
       </WorkbenchLayout>
 
       <section className="mobile-task-summary">
-        <div><Gauge size={17} /><span>平均进度</span><strong>{Math.round(tasks.reduce((sum, task) => sum + task.progress, 0) / tasks.length)}%</strong></div>
+        <div><Gauge size={17} /><span>平均进度</span><strong>{tasks.length ? Math.round(tasks.reduce((sum, task) => sum + task.progress, 0) / tasks.length) : 0}%</strong></div>
         <div><UsersRound size={17} /><span>在线 Agent</span><strong>3 / 5</strong></div>
         <div><Clock3 size={17} /><span>平均执行</span><strong>42m</strong></div>
         <div><Layers3 size={17} /><span>项目数</span><strong>3</strong></div>
       </section>
+
+      {/* P3-5：真实执行结果查看（runner 回传 output） */}
+      <Dialog open={resultTask !== null} onClose={() => setResultTask(null)} title="执行结果">
+        <div className="result-dialog">
+          <h3>{resultTask?.title}</h3>
+          <p className="result-dialog-meta">执行者：{resultTask?.assignee ?? '—'} · Token 用量：{(resultTask?.tokenUsed ?? 0).toLocaleString()}</p>
+          <div className="result-dialog-body"><ReactMarkdown>{resultTask?.result ?? '（无结果内容）'}</ReactMarkdown></div>
+        </div>
+      </Dialog>
     </div>
   )
 }

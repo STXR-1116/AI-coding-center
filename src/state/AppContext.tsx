@@ -1,15 +1,18 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  initialChanges,
   initialConversations,
   initialModuleSettings,
   initialRequirements,
   initialTasks,
   projects,
 } from '../data/mock'
-import type { ExecutionMode, Requirement, Task, TaskStatus, User } from '../types'
-import { AppContext, type NewTaskInput } from './app-context'
+import { fetchMe, login as loginRequest, logout as logoutRequest, normalizeRole } from '../api/auth'
+import type { ExecutionMode, ModuleSetting, Requirement, Task, TaskStatus, User } from '../types'
+import { AppContext, type AuthState, type NewTaskInput } from './app-context'
 import { canTransitionTaskStatus, createTaskEvent } from './task-transitions'
+
+/** Placeholder shown only while auth is still resolving (status === 'loading'). */
+const ANONYMOUS_USER: User = { id: '', name: '', role: 'employee', title: '' }
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState(initialTasks)
@@ -17,13 +20,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeProjectId, setActiveProjectId] = useState(projects[0].id)
   const [conversations, setConversations] = useState(initialConversations)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversations[0]?.id ?? null)
-  const [changes, setChanges] = useState(initialChanges)
   const [moduleSettings, setModuleSettings] = useState(initialModuleSettings)
 
-  const user: User = useMemo(
-    () => ({ id: 'user-1', name: 'Brandon', role: 'leader', title: '产品经理' }),
-    [],
-  )
+  const [auth, setAuth] = useState<AuthState>({
+    user: null,
+    capabilities: [],
+    visibleModules: [],
+    status: 'loading',
+  })
+
+  // Resolve the existing session (if any) on mount. A 401 → fetchMe returns
+  // null → status 'anonymous'; any other failure also lands as anonymous so the
+  // user is sent to the login page rather than stuck on a perpetual spinner.
+  useEffect(() => {
+    let cancelled = false
+    fetchMe()
+      .then((me) => {
+        if (cancelled) return
+        if (!me) {
+          setAuth({ user: null, capabilities: [], visibleModules: [], status: 'anonymous' })
+          return
+        }
+        const role = normalizeRole(me.role)
+        setAuth({
+          user: { id: me.user.id, username: me.user.username, name: me.user.name, role, title: me.user.title ?? '' },
+          capabilities: me.capabilities ?? [],
+          visibleModules: me.visibleModules ?? [],
+          status: 'authenticated',
+        })
+      })
+      .catch(() => {
+        if (cancelled) return
+        setAuth({ user: null, capabilities: [], visibleModules: [], status: 'anonymous' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const login = useCallback(async (username: string, password: string) => {
+    const result = await loginRequest(username, password)
+    const role = normalizeRole(result.user.role)
+    setAuth({
+      user: { id: result.user.id, username: result.user.username, name: result.user.name, role, title: result.user.title ?? '' },
+      capabilities: result.capabilities ?? [],
+      visibleModules: [],
+      status: 'authenticated',
+    })
+  }, [])
+
+  const logout = useCallback(async () => {
+    try {
+      await logoutRequest()
+    } catch {
+      // Even if the server call fails, clear local auth so the UI returns to login.
+    }
+    setAuth({ user: null, capabilities: [], visibleModules: [], status: 'anonymous' })
+  }, [])
+
+  // Non-null `user` accessor for components rendered behind RequireAuth.
+  const user: User = auth.user ?? ANONYMOUS_USER
 
   const addTask = useCallback(
     (input: NewTaskInput) => {
@@ -48,6 +104,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         tags: ['新任务'],
         updatedAt: '刚刚',
         events: [createTaskEvent(input.executionMode === 'manual' ? 'pending' : 'assigned')],
+        result: '',
       }
       setTasks((current) => [task, ...current])
       return task
@@ -79,7 +136,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRequirements((current) => [requirement, ...current])
   }, [])
 
-  const selectConversation = useCallback((id: string) => {
+  // M1（审查修复）：支持传 null 表达"无选中"——删除当前会话后清空，避免用空串 '' 污染语义。
+  const selectConversation = useCallback((id: string | null) => {
     setSelectedConversationId(id)
   }, [])
 
@@ -169,9 +227,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ))
   }, [])
 
-  const reviewChange = useCallback((id: string, status: 'accepted' | 'rejected') => {
-    setChanges((current) => current.map((change) => (change.id === id ? { ...change, status } : change)))
-  }, [])
+  // M3（审查清理）：reviewChange 已随 P1-4c 迁移移除（变更审查走真实 revert）——原实现：
+  // setChanges((current) => current.map((change) => (change.id === id ? { ...change, status } : change)))
 
   const toggleModule = useCallback((id: string) => {
     setModuleSettings((current) =>
@@ -179,8 +236,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  /**
+   * Replace the whole module-settings list. Called by `useSetModuleToggle`
+   * (queries/modules) after a successful REST toggle to mirror the server-
+   * authoritative list into AppContext — keeps AppShell nav + ModuleGate live.
+   * Stable identity (empty deps) so the query hook's `useApp()` value doesn't
+   * churn on every moduleSettings change.
+   */
+  const replaceModuleSettings = useCallback((next: ModuleSetting[]) => {
+    setModuleSettings(next)
+  }, [])
+
   const value = useMemo(
     () => ({
+      auth,
       user,
       tasks,
       requirements,
@@ -188,8 +257,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       activeProjectId,
       selectedConversationId,
       conversations,
-      changes,
       moduleSettings,
+      login,
+      logout,
       setActiveProjectId: selectProject,
       selectConversation,
       addTask,
@@ -200,18 +270,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteConversation,
       sendMessage,
       completeMessage,
-      reviewChange,
       toggleModule,
+      replaceModuleSettings,
     }),
     [
+      auth,
       user,
       tasks,
       requirements,
       activeProjectId,
       selectedConversationId,
       conversations,
-      changes,
       moduleSettings,
+      login,
+      logout,
       addTask,
       updateTaskStatus,
       updateTaskMode,
@@ -222,7 +294,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteConversation,
       sendMessage,
       completeMessage,
-      reviewChange,
       toggleModule,
     ],
   )

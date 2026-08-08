@@ -15,12 +15,14 @@ const defaultTitles: Record<ToastTone, string> = {
   success: '操作已完成',
   info: '状态已更新',
   warning: '需要注意',
+  error: '操作失败',
 }
 
 const toastIcons = {
   success: CheckCircle2,
   info: Info,
   warning: AlertTriangle,
+  error: AlertTriangle,
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {

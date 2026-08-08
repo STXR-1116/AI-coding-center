@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   AlertTriangle,
   Bell,
@@ -13,6 +13,7 @@ import {
   GitBranch,
   KeyRound,
   LayoutDashboard,
+  LoaderCircle,
   LockKeyhole,
   Mail,
   Network,
@@ -29,35 +30,30 @@ import {
 } from 'lucide-react'
 import { Button, Dialog, ProgressBar } from '../components/ui'
 import { useApp } from '../state/useApp'
+import { useCapability } from '../state/useCapability'
 import { useToast } from '../state/useToast'
-import type { ExecutionMode, ModuleSetting } from '../types'
+import {
+  useTokenBudgetConfig,
+  useUpdateTokenBudgetConfig,
+  usePlatformConfig,
+  useUpdatePlatformConfig,
+  VersionConflictError,
+} from '../queries/config'
+import { useModules, useSetModuleToggle } from '../queries/modules'
+import { handleApiError } from '../queries/errors'
+import { ApiClientError } from '../api/client'
+import type { ExecutionMode, ModuleSetting, TokenBudgetConfig, PlatformConfig } from '../types'
 import '../secondary-pages.css'
 
 type SettingsTab = 'modules' | 'runtime' | 'security' | 'notifications'
 
-interface PlatformConfig {
-  defaultExecutionMode: ExecutionMode
-  monthlyTokenBudget: number
-  singleTaskTokenLimit: number
-  budgetWarningThreshold: number
-  staleAfterMinutes: number
-  reclaimAfterMinutes: number
-  cloudFallback: boolean
-  sandboxScripts: boolean
-  credentialRotationDays: number
-  auditRetentionDays: number
-  backupEnabled: boolean
-  backupHour: string
-  notifyTaskFailure: boolean
-  notifyBudgetWarning: boolean
-  notifyAgentStale: boolean
-  dailyDigest: boolean
-  email: string
-  quietHoursEnabled: boolean
-  quietStart: string
-  quietEnd: string
-}
-
+/**
+ * Fallback platform config shown before the REST value arrives (and as the
+ * `saved` baseline for dirty-checking). Real values come from
+ * `usePlatformConfig`; this only shapes the first paint so inputs are never
+ * empty. The `version` starts at 0 — the server's real version replaces it on
+ * load and again after every successful save.
+ */
 const defaultConfig: PlatformConfig = {
   defaultExecutionMode: 'auto',
   monthlyTokenBudget: 1_200_000,
@@ -79,6 +75,22 @@ const defaultConfig: PlatformConfig = {
   quietHoursEnabled: true,
   quietStart: '22:00',
   quietEnd: '08:00',
+  version: 0,
+}
+
+/**
+ * Fallback Token-budget config shown before the REST value arrives (and as the
+ * `saved` baseline for dirty-checking). Real values come from
+ * `useTokenBudgetConfig`; this only shapes the first paint so inputs are never
+ * empty. The `version` starts at 0 — the server's real version replaces it on
+ * load and again after every successful save.
+ */
+const DEFAULT_TOKEN_BUDGET: TokenBudgetConfig = {
+  base: 24_000,
+  per100Chars: 800,
+  min: 8_000,
+  max: 200_000,
+  version: 0,
 }
 
 const moduleImpact: Record<string, string> = {
@@ -142,7 +154,7 @@ function SettingRow({ icon, title, description, control }: { icon: ReactNode; ti
 }
 
 export function SettingsPage() {
-  const { user, moduleSettings, toggleModule, tasks } = useApp()
+  const { user, tasks } = useApp()
   const { notify } = useToast()
   const [activeTab, setActiveTab] = useState<SettingsTab>('modules')
   const [moduleQuery, setModuleQuery] = useState('')
@@ -151,14 +163,48 @@ export function SettingsPage() {
   const [config, setConfig] = useState(defaultConfig)
   const [savedConfig, setSavedConfig] = useState(defaultConfig)
   const [savedNotice, setSavedNotice] = useState(false)
+  // P3-4b：模块开关走 REST（useModules——select 已桥接为 ModuleSetting）
+  const modulesQuery = useModules()
+  const moduleToggleMutation = useSetModuleToggle()
+  const moduleSettings = modulesQuery.data ?? []
 
-  const canManageModules = user.role === 'leader' || user.role === 'pm'
+  // 运行与预算 tab：Token 预算走版本化 REST（GET /config/token-budget）。
+  // budgetForm 是本地编辑态；budgetSaved 是上次保存后的基线（dirty 判定）。
+  const budgetQuery = useTokenBudgetConfig()
+  const updateBudgetMutation = useUpdateTokenBudgetConfig()
+  const [budgetForm, setBudgetForm] = useState<TokenBudgetConfig>(DEFAULT_TOKEN_BUDGET)
+  const [budgetSaved, setBudgetSaved] = useState<TokenBudgetConfig>(DEFAULT_TOKEN_BUDGET)
+
+  // 首次拿到服务端配置后，把表单与基线都对齐到最新值（version 含乐观锁令牌）。
+  useEffect(() => {
+    if (budgetQuery.data) {
+      setBudgetForm(budgetQuery.data)
+      setBudgetSaved(budgetQuery.data)
+    }
+  }, [budgetQuery.data])
+
+  // 平台参数 tab（运行 / 安全 / 通知）：走版本化 REST（GET/PUT /config/platform）。
+  // config 是本地编辑态；savedConfig 是上次保存后的基线（dirty 判定）。后端存整块
+  // JSON，version 做乐观锁；defaultConfig 仅在首屏服务端值到达前兜底，避免输入空白。
+  const platformQuery = usePlatformConfig()
+  const updatePlatformMutation = useUpdatePlatformConfig()
+
+  // 首次拿到服务端配置后，把表单与基线都对齐到最新值（version 含乐观锁令牌）。
+  useEffect(() => {
+    if (platformQuery.data) {
+      setConfig(platformQuery.data)
+      setSavedConfig(platformQuery.data)
+    }
+  }, [platformQuery.data])
+
+  const canManageModules = useCapability('module:toggle')
   const enabledCount = moduleSettings.filter((setting) => setting.enabled).length
   const coreDisabled = moduleSettings.filter((setting) => setting.risk === 'core' && !setting.enabled)
   const pendingModule = moduleSettings.find((setting) => setting.id === pendingModuleId)
   const configDirty = JSON.stringify(config) !== JSON.stringify(savedConfig)
   const currentTokenUsage = tasks.reduce((total, task) => total + task.tokenUsed, 0)
-  const monthlyBudgetUsage = Math.min(100, currentTokenUsage / config.monthlyTokenBudget * 100)
+  // 预算进度：当前样例用量 vs 任务估算上限（max——后端 token-budget 契约字段）
+  const monthlyBudgetUsage = Math.min(100, currentTokenUsage / budgetForm.max * 100)
 
   const filteredModules = useMemo(() => {
     const text = moduleQuery.trim().toLowerCase()
@@ -177,32 +223,118 @@ export function SettingsPage() {
     if (!canManageModules) return
     if (setting.risk === 'core') setPendingModuleId(setting.id)
     else {
-      toggleModule(setting.id)
-      notify(`${setting.label}已${setting.enabled ? '停用' : '启用'}，导航与直接访问权限已同步。`, {
-        title: '模块状态已更新',
-        tone: setting.enabled ? 'warning' : 'success',
-      })
+      moduleToggleMutation.mutate(
+        { key: setting.id, enabled: !setting.enabled },
+        {
+          onSuccess: () => {
+            notify(`${setting.label}已${setting.enabled ? '停用' : '启用'}，导航与直接访问权限已同步。`, {
+              title: '模块状态已更新',
+              tone: setting.enabled ? 'warning' : 'success',
+            })
+          },
+          onError: (error) => {
+            // M1（审查修复）：失败纠错——不再乐观假成功
+            notify(handleApiError(error), { title: '模块状态更新失败', tone: 'error' })
+          },
+        },
+      )
     }
   }
 
   const confirmModuleToggle = () => {
     if (!pendingModule) return
-    toggleModule(pendingModule.id)
-    notify(`${pendingModule.label}已${pendingModule.enabled ? '停用' : '启用'}，相关入口与工作流已同步。`, {
-      title: '核心模块已更新',
-      tone: pendingModule.enabled ? 'warning' : 'success',
-    })
+    moduleToggleMutation.mutate(
+      { key: pendingModule.id, enabled: !pendingModule.enabled },
+      {
+        onSuccess: () => {
+          notify(`${pendingModule.label}已${pendingModule.enabled ? '停用' : '启用'}，相关入口与工作流已同步。`, {
+            title: '核心模块已更新',
+            tone: pendingModule.enabled ? 'warning' : 'success',
+          })
+        },
+        onError: (error) => {
+          notify(handleApiError(error), { title: '核心模块更新失败', tone: 'error' })
+        },
+      },
+    )
     setPendingModuleId(null)
   }
 
+  // 保存平台参数：PUT /config/platform（带 version 乐观锁，整块 JSON）。
+  // 成功 → toast + 用返回的递增 version 同步基线；409 → mutation 已重拉最新值，
+  // 这里把表单/基线对齐到 latest 并提示"已被他人修改"；其他错误 → 错误 toast。
   const saveConfig = () => {
-    setSavedConfig(config)
-    setSavedNotice(true)
-    notify('平台参数已保存，后端接入后应同时写入配置审计。', { title: '配置已保存' })
+    updatePlatformMutation.mutate(config, {
+      onSuccess: (data) => {
+        setConfig(data)
+        setSavedConfig(data)
+        setSavedNotice(true)
+        notify('平台参数已保存，立即生效并写入配置审计。', { title: '配置已保存', tone: 'success' })
+      },
+      onError: (error) => {
+        if (error instanceof VersionConflictError) {
+          setConfig(error.latest)
+          setSavedConfig(error.latest)
+          setSavedNotice(false)
+          notify('配置已被他人修改，已刷新最新值，请确认后再次保存。', {
+            title: '版本冲突',
+            tone: 'info',
+          })
+          return
+        }
+        notify(
+          error instanceof ApiClientError ? error.message : '保存失败，请稍后重试。',
+          { title: '保存失败', tone: 'error' },
+        )
+      },
+    })
   }
 
   const resetConfig = () => {
     setConfig(savedConfig)
+    setSavedNotice(false)
+  }
+
+  // Token 预算表单字段更新（数字字段做 Number 归一）。改任意字段即清除保存提示。
+  const updateBudget = <Key extends keyof TokenBudgetConfig>(key: Key, value: TokenBudgetConfig[Key]) => {
+    setBudgetForm((current) => ({ ...current, [key]: value }))
+    setSavedNotice(false)
+  }
+
+  const budgetDirty = JSON.stringify(budgetForm) !== JSON.stringify(budgetSaved)
+
+  // 保存 Token 预算：PUT /config/token-budget（带 version 乐观锁）。
+  // 成功 → toast + 用返回的递增 version 同步基线；409 → mutation 已重拉最新值，
+  // 这里把表单/基线对齐到 latest 并提示"已被他人修改"；其他错误 → 错误 toast。
+  const saveBudget = () => {
+    updateBudgetMutation.mutate(budgetForm, {
+      onSuccess: (data) => {
+        setBudgetForm(data)
+        setBudgetSaved(data)
+        setSavedNotice(true)
+        notify('Token 预算配置已保存，立即生效。', { title: '配置已保存', tone: 'success' })
+      },
+      onError: (error) => {
+        if (error instanceof VersionConflictError) {
+          setBudgetForm(error.latest)
+          setBudgetSaved(error.latest)
+          setSavedNotice(false)
+          notify('配置已被他人修改，已刷新最新值，请确认后再次保存。', {
+            title: '版本冲突',
+            tone: 'info',
+          })
+          return
+        }
+        notify(
+          error instanceof ApiClientError ? error.message : '保存失败，请稍后重试。',
+          { title: '保存失败', tone: 'error' },
+        )
+      },
+    })
+  }
+
+  const resetBudget = () => {
+    setBudgetForm(budgetSaved)
     setSavedNotice(false)
   }
 
@@ -281,10 +413,22 @@ export function SettingsPage() {
               </SettingSection>
 
               <SettingSection title="Token 预算" description="预算在任务分配时预扣，未使用部分在结束后退回。" icon={<CircleDollarSign size={18} />}>
-                <div className="budget-overview"><div><span>当前样例用量</span><strong>{currentTokenUsage.toLocaleString()} <small>/ {config.monthlyTokenBudget.toLocaleString()}</small></strong></div><span>{monthlyBudgetUsage.toFixed(1)}%</span><ProgressBar value={monthlyBudgetUsage} warning={monthlyBudgetUsage >= config.budgetWarningThreshold} /></div>
-                <SettingRow icon={<Gauge size={17} />} title="月度总预算" description="所有 Agent 共用的周期 Token 上限。" control={<label className="setting-number-input"><input type="number" min="100000" step="50000" value={config.monthlyTokenBudget} onChange={(event) => updateConfig('monthlyTokenBudget', Number(event.target.value))} /><span>Token</span></label>} />
-                <SettingRow icon={<Bot size={17} />} title="单任务上限" description="任务达到上限后暂停执行并请求管理角色处理。" control={<label className="setting-number-input"><input type="number" min="4000" step="1000" value={config.singleTaskTokenLimit} onChange={(event) => updateConfig('singleTaskTokenLimit', Number(event.target.value))} /><span>Token</span></label>} />
-                <SettingRow icon={<AlertTriangle size={17} />} title="预算告警阈值" description="达到该比例时通知负责人，但不会自动停止任务。" control={<div className="setting-slider"><input type="range" min="50" max="95" step="5" value={config.budgetWarningThreshold} onChange={(event) => updateConfig('budgetWarningThreshold', Number(event.target.value))} /><strong>{config.budgetWarningThreshold}%</strong></div>} />
+                {budgetQuery.isLoading ? (
+                  <div className="settings-loading-state"><LoaderCircle size={20} /><span>正在加载预算配置…</span></div>
+                ) : budgetQuery.error ? (
+                  <div className="settings-error-state"><AlertTriangle size={18} /><div><strong>预算配置加载失败</strong><p>{(budgetQuery.error as ApiClientError)?.message ?? '请稍后重试或检查登录状态。'}</p></div><Button variant="secondary" size="sm" icon={<RefreshCw size={14} />} onClick={() => { void budgetQuery.refetch() }}>重试</Button></div>
+                ) : (
+                  <>
+                    <div className="budget-overview"><div><span>当前样例用量</span><strong>{currentTokenUsage.toLocaleString()} <small>/ {budgetForm.max.toLocaleString()}</small></strong></div><span>{monthlyBudgetUsage.toFixed(1)}%</span><ProgressBar value={monthlyBudgetUsage} warning={monthlyBudgetUsage >= 90} /></div>
+                    <SettingRow icon={<SlidersHorizontal size={17} />} title="任务估算模型" description="按 base + 每 100 字符增量估算单任务预算，并限制在 min/max 区间内。" control={<div className="setting-inline-fields"><label><span>基础</span><input type="number" min="0" step="1000" value={budgetForm.base} onChange={(event) => updateBudget('base', Number(event.target.value))} /><small>Token</small></label><label><span>每 100 字符</span><input type="number" min="0" step="50" value={budgetForm.per100Chars} onChange={(event) => updateBudget('per100Chars', Number(event.target.value))} /><small>Token</small></label><label><span>最小</span><input type="number" min="0" step="1000" value={budgetForm.min} onChange={(event) => updateBudget('min', Number(event.target.value))} /><small>Token</small></label><label><span>最大</span><input type="number" min="0" step="10000" value={budgetForm.max} onChange={(event) => updateBudget('max', Number(event.target.value))} /><small>Token</small></label></div>} />
+                    <p className="settings-config-meta">配置版本 v{budgetForm.version} · 保存后服务端递增版本并写入审计。</p>
+                    <div className="settings-budget-savebar">
+                      {savedNotice && !budgetDirty ? <span className="settings-saved-notice"><Check size={15} />预算配置已保存并立即生效</span> : <span>{budgetDirty ? '有尚未保存的预算更改' : '当前预算已同步'}</span>}
+                      <Button variant="ghost" icon={<RotateCcw size={15} />} disabled={!budgetDirty || updateBudgetMutation.isPending} onClick={resetBudget}>撤销更改</Button>
+                      <Button variant="primary" icon={updateBudgetMutation.isPending ? <LoaderCircle size={15} /> : <Save size={15} />} disabled={!budgetDirty || updateBudgetMutation.isPending} onClick={saveBudget}>{updateBudgetMutation.isPending ? '保存中…' : '保存预算'}</Button>
+                    </div>
+                  </>
+                )}
               </SettingSection>
             </div>
           ) : null}
@@ -325,8 +469,8 @@ export function SettingsPage() {
           {activeTab !== 'modules' ? (
             <footer className="settings-savebar settings-savebar-redesign">
               <div>{savedNotice && !configDirty ? <span className="settings-saved-notice"><Check size={15} />配置已保存并立即生效</span> : <span>{configDirty ? '有尚未保存的更改' : '当前配置已同步'}</span>}</div>
-              <Button variant="ghost" icon={<RotateCcw size={15} />} disabled={!configDirty} onClick={resetConfig}>撤销更改</Button>
-              <Button variant="primary" icon={<Save size={15} />} disabled={!configDirty} onClick={saveConfig}>保存配置</Button>
+              <Button variant="ghost" icon={<RotateCcw size={15} />} disabled={!configDirty || updatePlatformMutation.isPending} onClick={resetConfig}>撤销更改</Button>
+              <Button variant="primary" icon={updatePlatformMutation.isPending ? <LoaderCircle size={15} /> : <Save size={15} />} disabled={!configDirty || updatePlatformMutation.isPending} onClick={saveConfig}>{updatePlatformMutation.isPending ? '保存中…' : '保存配置'}</Button>
             </footer>
           ) : null}
         </main>

@@ -7,11 +7,11 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
-  CloudCog,
   Database,
   EyeOff,
   KeyRound,
   Link2,
+  LoaderCircle,
   MoreHorizontal,
   Network,
   Plus,
@@ -27,94 +27,23 @@ import {
 import { agents } from '../data/mock'
 import { Button, Dialog, EmptyState, IconButton, StatusBadge } from '../components/ui'
 import { PageHeader, WorkbenchLayout } from '../components/layout'
+import { ApiClientError } from '../api/client'
+import { toKnowledgeBase, toKnowledgeBaseDetail } from '../api/knowledge'
+import type { KnowledgeBase } from '../api/knowledge'
+import {
+  useBindKnowledgeBase,
+  useDisableKnowledgeBase,
+  useKnowledgeBase,
+  useKnowledgeBases,
+  useRegisterKnowledgeBase,
+  useUnbindKnowledgeBase,
+} from '../queries/knowledge'
+import { useToast } from '../state/useToast'
+import type { RegisterKnowledgeBaseInput } from '../types'
 import '../resource-pages.css'
 
 type KnowledgeHealth = 'healthy' | 'degraded' | 'offline' | 'checking'
 type RetrievalMode = 'hybrid' | 'semantic' | 'keyword'
-
-interface KnowledgeBase {
-  id: string
-  name: string
-  description: string
-  endpoint: string
-  status: KnowledgeHealth
-  enabled: boolean
-  authType: 'bearer' | 'api_key' | 'none'
-  lastCheck: string
-  latency: number
-  calls24h: number
-  topK: number
-  threshold: number
-  retrievalMode: RetrievalMode
-  boundAgents: string[]
-}
-
-const initialKnowledgeBases: KnowledgeBase[] = [
-  {
-    id: 'kb-team-memory',
-    name: '团队工程记忆',
-    description: '沉淀架构决策、故障复盘和跨项目工程约定。',
-    endpoint: 'https://context.internal.example/mcp/team',
-    status: 'healthy',
-    enabled: true,
-    authType: 'bearer',
-    lastCheck: '35 秒前',
-    latency: 142,
-    calls24h: 386,
-    topK: 8,
-    threshold: 0.72,
-    retrievalMode: 'hybrid',
-    boundAgents: ['agent-atlas', 'agent-nova', 'agent-lin'],
-  },
-  {
-    id: 'kb-product-spec',
-    name: '产品规范库',
-    description: '需求模板、验收口径和产品交互规范。',
-    endpoint: 'https://context.internal.example/mcp/product',
-    status: 'healthy',
-    enabled: true,
-    authType: 'api_key',
-    lastCheck: '2 分钟前',
-    latency: 188,
-    calls24h: 214,
-    topK: 6,
-    threshold: 0.76,
-    retrievalMode: 'semantic',
-    boundAgents: ['agent-nova', 'agent-iris'],
-  },
-  {
-    id: 'kb-security',
-    name: '安全与合规手册',
-    description: '凭证、权限、审计和代码安全检查清单。',
-    endpoint: 'https://security.example.net/mcp',
-    status: 'degraded',
-    enabled: true,
-    authType: 'bearer',
-    lastCheck: '7 分钟前',
-    latency: 824,
-    calls24h: 91,
-    topK: 5,
-    threshold: 0.8,
-    retrievalMode: 'hybrid',
-    boundAgents: ['agent-iris'],
-  },
-  {
-    id: 'kb-legacy-docs',
-    name: '旧版接口文档',
-    description: '迁移期间保留的历史 API 与兼容性说明。',
-    endpoint: 'http://legacy-context.local:8090/mcp',
-    status: 'offline',
-    enabled: false,
-    authType: 'none',
-    lastCheck: '1 小时前',
-    latency: 0,
-    calls24h: 0,
-    topK: 4,
-    threshold: 0.68,
-    retrievalMode: 'keyword',
-    boundAgents: [],
-  },
-]
 
 const healthLabels: Record<KnowledgeHealth, string> = {
   healthy: '健康',
@@ -134,16 +63,40 @@ function HealthBadge({ status }: { status: KnowledgeHealth }) {
   return <span className={`knowledge-health knowledge-health-${status}`}><Icon size={13} />{healthLabels[status]}</span>
 }
 
+function StatePanel({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="state-panel" role="status">
+      <span className="state-panel-icon">{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </div>
+    </div>
+  )
+}
+
 export function KnowledgePage() {
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>(initialKnowledgeBases)
+  const { notify } = useToast()
+  const knowledgeBasesQuery = useKnowledgeBases()
+  const registerMutation = useRegisterKnowledgeBase()
+  const disableMutation = useDisableKnowledgeBase()
+  const bindMutation = useBindKnowledgeBase()
+  const unbindMutation = useUnbindKnowledgeBase()
+
   const [query, setQuery] = useState('')
   const [health, setHealth] = useState<'all' | KnowledgeHealth>('all')
-  const [selectedId, setSelectedId] = useState(initialKnowledgeBases[0]?.id ?? '')
+  const [selectedId, setSelectedId] = useState('')
   const [mobileView, setMobileView] = useState<'list' | 'detail' | 'activity'>('list')
   const [createOpen, setCreateOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [formError, setFormError] = useState('')
-  const [form, setForm] = useState({ name: '', description: '', endpoint: '', authType: 'bearer' as KnowledgeBase['authType'], credential: '', retrievalMode: 'hybrid' as RetrievalMode })
+  const [form, setForm] = useState({ name: '', description: '', endpoint: '', authType: 'bearer' as 'bearer' | 'api_key' | 'none', credential: '', retrievalMode: 'hybrid' as RetrievalMode })
+
+  // 后端 DTO → UI 领域模型
+  const knowledgeBases: KnowledgeBase[] = useMemo(
+    () => (knowledgeBasesQuery.data ?? []).map(toKnowledgeBase),
+    [knowledgeBasesQuery.data],
+  )
 
   const filtered = useMemo(() => {
     const text = query.trim().toLowerCase()
@@ -153,33 +106,59 @@ export function KnowledgePage() {
     })
   }, [health, knowledgeBases, query])
 
+  // 首次拿到列表后默认选中第一个（列表刷新/选中项被删时回退到第一个）
   const selected = filtered.find((knowledgeBase) => knowledgeBase.id === selectedId) ?? filtered[0]
+
+  // 绑定明细走详情端点：KB 列表 DTO 只带 boundAgentCount，不带 boundAgents 明细
+  // （与 Skill 列表 DTO 不同）。选中 KB 时拉详情，用 toKnowledgeBaseDetail 填充
+  // boundAgents 驱动绑定开关勾选态；详情未就绪前回退空数组（避免误勾选/误解绑）。
+  const knowledgeBaseDetailQuery = useKnowledgeBase(selected?.id)
+  const boundAgentIds: string[] = knowledgeBaseDetailQuery.data
+    ? toKnowledgeBaseDetail(knowledgeBaseDetailQuery.data).boundAgents
+    : []
+
   const enabledCount = knowledgeBases.filter((item) => item.enabled).length
   const healthyCount = knowledgeBases.filter((item) => item.status === 'healthy').length
   const calls = knowledgeBases.reduce((sum, item) => sum + item.calls24h, 0)
   const reachable = knowledgeBases.filter((item) => item.latency > 0)
   const averageLatency = reachable.length ? Math.round(reachable.reduce((sum, item) => sum + item.latency, 0) / reachable.length) : 0
 
-  const updateKnowledgeBase = (id: string, patch: Partial<KnowledgeBase>) => {
-    setKnowledgeBases((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))
-  }
-
-  const testConnection = (knowledgeBase: KnowledgeBase) => {
-    const nextStatus: KnowledgeHealth = knowledgeBase.endpoint.startsWith('http://legacy') ? 'offline' : 'healthy'
-    updateKnowledgeBase(knowledgeBase.id, {
-      status: nextStatus,
-      lastCheck: '刚刚',
-      latency: nextStatus === 'healthy' ? Math.max(96, Math.min(knowledgeBase.latency || 180, 240)) : 0,
+  // 停用：POST /knowledge-bases/{id}/disable → invalidate + toast
+  const handleDisable = (knowledgeBase: KnowledgeBase) => {
+    disableMutation.mutate(knowledgeBase.id, {
+      onSuccess: () => notify(`已停用知识库「${knowledgeBase.name}」`, { tone: 'success' }),
+      onError: (error) => notify(
+        (error instanceof ApiClientError ? error.message : '停用失败，请稍后重试。'),
+        { tone: 'error', title: '停用失败' },
+      ),
     })
-    setNotice(nextStatus === 'healthy' ? `${knowledgeBase.name} 连接与凭证验证通过。` : `${knowledgeBase.name} 仍不可达，运行时会跳过该知识库。`)
   }
 
-  const toggleAgentBinding = (knowledgeBaseId: string, agentId: string) => {
-    setKnowledgeBases((current) => current.map((item) => {
-      if (item.id !== knowledgeBaseId) return item
-      const exists = item.boundAgents.includes(agentId)
-      return { ...item, boundAgents: exists ? item.boundAgents.filter((id) => id !== agentId) : [...item.boundAgents, agentId] }
-    }))
+  // 测试连接：后端 MVP 无 health-check 端点（P2-2a 仅 disable/bind）；本地提示
+  const testConnection = (knowledgeBase: KnowledgeBase) => {
+    void knowledgeBase
+    notify('连通性检查待后端 health-check 接口接入（P2-2a 未实现）。', { tone: 'info' })
+  }
+
+  // 绑定/解绑：POST/DELETE /knowledge-bases/{id}/agents/{agentId} → invalidate + toast
+  const toggleAgentBinding = (knowledgeBaseId: string, agentId: string, bound: boolean) => {
+    const mutation = bound ? unbindMutation : bindMutation
+    mutation.mutate(
+      { knowledgeBaseId, agentId },
+      {
+        onSuccess: () => notify(bound ? '已解绑 Agent' : '已绑定 Agent', { tone: 'success' }),
+        onError: (error) => notify(
+          (error instanceof ApiClientError ? error.message : '绑定操作失败，请稍后重试。'),
+          { tone: 'error', title: '操作失败' },
+        ),
+      },
+    )
+  }
+
+  // 检索参数写回：后端 PATCH 仅接受 name/mcpServerUrl/config（检索参数可序列化进 config，
+  // 但 health-check 未实现，此处保留本地态，待后端 config schema 落地后接入）
+  const updateRetrievalParams = (_id: string, _params: Record<string, unknown>) => {
+    notify('检索参数持久化待后端 config schema 落地后接入。', { tone: 'info' })
   }
 
   const handleCreate = (event: FormEvent) => {
@@ -197,28 +176,34 @@ export function KnowledgePage() {
       setFormError('所选鉴权方式需要填写凭证。')
       return
     }
-    const next: KnowledgeBase = {
-      id: `kb-${Date.now()}`,
-      name: form.name.trim(),
+    // 把用途说明 + 检索模式 + 鉴权方式序列化进 config（后端 config 为 JSON 字符串，透传）
+    const config = JSON.stringify({
       description: form.description.trim() || '尚未填写知识库说明。',
-      endpoint: form.endpoint.trim(),
-      status: 'checking',
-      enabled: true,
-      authType: form.authType,
-      lastCheck: '等待首次检查',
-      latency: 0,
-      calls24h: 0,
-      topK: 6,
-      threshold: 0.72,
       retrievalMode: form.retrievalMode,
-      boundAgents: [],
+      authType: form.authType,
+    })
+    // 凭证序列化为 JSON 字符串（后端独立加密保存，永不回显）
+    const credentials = form.authType === 'none' ? undefined : JSON.stringify({ type: form.authType, secret: form.credential.trim() })
+    const input: RegisterKnowledgeBaseInput = {
+      name: form.name.trim(),
+      mcpServerUrl: form.endpoint.trim(),
+      config,
+      ...(credentials ? { credentials } : {}),
     }
-    setKnowledgeBases((current) => [next, ...current])
-    setSelectedId(next.id)
-    setHealth('all')
-    setForm({ name: '', description: '', endpoint: '', authType: 'bearer', credential: '', retrievalMode: 'hybrid' })
-    setCreateOpen(false)
-    setNotice(`${next.name} 已登记，等待后端完成首次连通性检查。`)
+    registerMutation.mutate(input, {
+      onSuccess: (dto) => {
+        notify(`已登记知识库「${dto.name}」`, { tone: 'success' })
+        setSelectedId(dto.id)
+        setHealth('all')
+        setForm({ name: '', description: '', endpoint: '', authType: 'bearer', credential: '', retrievalMode: 'hybrid' })
+        setCreateOpen(false)
+        setNotice(`${dto.name} 已登记，等待后端完成首次连通性检查。`)
+      },
+      onError: (error) => notify(
+        (error instanceof ApiClientError ? error.message : '注册失败，请稍后重试。'),
+        { tone: 'error', title: '注册失败' },
+      ),
+    })
   }
 
   const inspector = selected ? (
@@ -237,22 +222,26 @@ export function KnowledgePage() {
 
         <section className="knowledge-config-section">
           <header><SlidersHorizontal size={16} /><strong>检索参数</strong></header>
-          <label><span>检索模式</span><select value={selected.retrievalMode} onChange={(event) => updateKnowledgeBase(selected.id, { retrievalMode: event.target.value as RetrievalMode })}>{Object.entries(retrievalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label><span>召回数量 <b>{selected.topK}</b></span><input type="range" min={1} max={20} value={selected.topK} onChange={(event) => updateKnowledgeBase(selected.id, { topK: Number(event.target.value) })} /></label>
-          <label><span>相似度阈值 <b>{selected.threshold.toFixed(2)}</b></span><input type="range" min={0.4} max={0.95} step={0.01} value={selected.threshold} onChange={(event) => updateKnowledgeBase(selected.id, { threshold: Number(event.target.value) })} /></label>
+          <label><span>检索模式</span><select value={selected.retrievalMode} onChange={(event) => updateRetrievalParams(selected.id, { retrievalMode: event.target.value as RetrievalMode })}>{Object.entries(retrievalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label><span>召回数量 <b>{selected.topK}</b></span><input type="range" min={1} max={20} value={selected.topK} onChange={(event) => updateRetrievalParams(selected.id, { topK: Number(event.target.value) })} /></label>
+          <label><span>相似度阈值 <b>{selected.threshold.toFixed(2)}</b></span><input type="range" min={0.4} max={0.95} step={0.01} value={selected.threshold} onChange={(event) => updateRetrievalParams(selected.id, { threshold: Number(event.target.value) })} /></label>
         </section>
 
         <section className="knowledge-binding-section">
-          <header><div><Bot size={16} /><strong>Agent 绑定</strong></div><span>{selected.boundAgents.length}</span></header>
+          <header><div><Bot size={16} /><strong>Agent 绑定</strong></div><span>{boundAgentIds.length}</span></header>
           {agents.map((agent) => {
-            const checked = selected.boundAgents.includes(agent.id)
-            return <label key={agent.id} className={checked ? 'knowledge-agent-binding is-selected' : 'knowledge-agent-binding'}><input type="checkbox" checked={checked} onChange={() => toggleAgentBinding(selected.id, agent.id)} /><span className="mini-avatar"><Bot size={13} /></span><span><strong>{agent.name}</strong><small>{agent.model}</small></span><StatusBadge status={agent.status} /></label>
+            const checked = boundAgentIds.includes(agent.id)
+            return <label key={agent.id} className={checked ? 'knowledge-agent-binding is-selected' : 'knowledge-agent-binding'}><input type="checkbox" checked={checked} onChange={() => toggleAgentBinding(selected.id, agent.id, checked)} /><span className="mini-avatar"><Bot size={13} /></span><span><strong>{agent.name}</strong><small>{agent.model}</small></span><StatusBadge status={agent.status} /></label>
           })}
         </section>
       </div>
       <footer className="inspector-footer">
-        <Button variant={selected.status === 'healthy' ? 'secondary' : 'primary'} icon={<RefreshCw size={15} />} onClick={() => testConnection(selected)}>测试连接</Button>
-        <Button variant="ghost" icon={selected.enabled ? <Unplug size={15} /> : <CloudCog size={15} />} onClick={() => updateKnowledgeBase(selected.id, { enabled: !selected.enabled })}>{selected.enabled ? '停用挂载' : '启用挂载'}</Button>
+        <Button variant={selected.status === 'healthy' ? 'secondary' : 'primary'} icon={<RefreshCw size={15} />} title="连通性检查接口待 P2-3 接入" onClick={() => testConnection(selected)}>测试连接</Button>
+        {selected.enabled ? (
+          <Button variant="ghost" icon={<Unplug size={15} />} disabled={disableMutation.isPending} onClick={() => handleDisable(selected)}>停用挂载</Button>
+        ) : (
+          <span className="knowledge-disabled-badge" title="重新启用待 P2-3 config 端点接入"><ServerOff size={15} />已停用</span>
+        )}
       </footer>
     </aside>
   ) : null
@@ -292,17 +281,19 @@ export function KnowledgePage() {
             </header>
 
             <div className="knowledge-list" data-scroll-region="knowledge-list">
-              {filtered.length ? filtered.map((knowledgeBase) => (
+              {knowledgeBasesQuery.isLoading ? <StatePanel icon={<LoaderCircle size={22} />} title="正在加载知识库列表" description="从后端拉取已登记的 ContextDB MCP…" />
+                : knowledgeBasesQuery.error ? <StatePanel icon={<AlertTriangle size={22} />} title="知识库列表加载失败" description={(knowledgeBasesQuery.error as ApiClientError)?.message ?? '请稍后重试或检查登录状态。'} />
+                : filtered.length ? filtered.map((knowledgeBase) => (
                 <button key={knowledgeBase.id} className={selected?.id === knowledgeBase.id ? 'knowledge-row is-active' : 'knowledge-row'} onClick={() => { setSelectedId(knowledgeBase.id); setMobileView('detail') }}>
-                <span className="knowledge-row-icon"><BrainCircuit size={18} /></span>
-                <span className="knowledge-row-identity"><strong>{knowledgeBase.name}</strong><small>{knowledgeBase.description}</small><code>{knowledgeBase.endpoint}</code></span>
-                <span className="knowledge-bound-count"><Bot size={14} /><b>{knowledgeBase.boundAgents.length}</b><small>Agent</small></span>
-                <span className="knowledge-latency"><Clock3 size={14} /><b>{knowledgeBase.latency || '-'}</b><small>{knowledgeBase.latency ? 'ms' : '无响应'}</small></span>
-                <span className="knowledge-call-count"><Network size={14} /><b>{knowledgeBase.calls24h}</b><small>今日调用</small></span>
-                <HealthBadge status={knowledgeBase.status} />
-                <span className={knowledgeBase.enabled ? 'module-switch is-on' : 'module-switch'} aria-label={knowledgeBase.enabled ? '已启用' : '已停用'}><i /></span>
+                  <span className="knowledge-row-icon"><BrainCircuit size={18} /></span>
+                  <span className="knowledge-row-identity"><strong>{knowledgeBase.name}</strong><small>{knowledgeBase.description}</small><code>{knowledgeBase.endpoint}</code></span>
+                  <span className="knowledge-bound-count"><Bot size={14} /><b>{knowledgeBase.boundAgents.length}</b><small>Agent</small></span>
+                  <span className="knowledge-latency"><Clock3 size={14} /><b>{knowledgeBase.latency || '-'}</b><small>{knowledgeBase.latency ? 'ms' : '无响应'}</small></span>
+                  <span className="knowledge-call-count"><Network size={14} /><b>{knowledgeBase.calls24h}</b><small>今日调用</small></span>
+                  <HealthBadge status={knowledgeBase.status} />
+                  <span className={knowledgeBase.enabled ? 'module-switch is-on' : 'module-switch'} aria-label={knowledgeBase.enabled ? '已启用' : '已停用'}><i /></span>
                 </button>
-              )) : <EmptyState icon={<Unplug size={23} />} title="没有匹配的知识库" description="调整健康状态或搜索条件后再试。" />}
+              )) : <EmptyState icon={<Unplug size={23} />} title="没有匹配的知识库" description="调整健康状态或搜索条件后再试，或注册一个新的 ContextDB MCP。" />}
             </div>
           </div>
 
@@ -318,12 +309,12 @@ export function KnowledgePage() {
 
       </WorkbenchLayout>
 
-      <Dialog open={createOpen} onClose={() => { setCreateOpen(false); setFormError('') }} title="注册知识库" description="登记 ContextDB MCP Server，并在接入时验证地址和凭证。" footer={<><Button onClick={() => setCreateOpen(false)}>取消</Button><Button variant="primary" type="submit" form="create-knowledge-form">验证并注册</Button></>} size="lg">
+      <Dialog open={createOpen} onClose={() => { setCreateOpen(false); setFormError('') }} title="注册知识库" description="登记 ContextDB MCP Server，并在接入时验证地址和凭证。" footer={<><Button onClick={() => setCreateOpen(false)}>取消</Button><Button variant="primary" type="submit" form="create-knowledge-form" disabled={registerMutation.isPending}>{registerMutation.isPending ? '注册中…' : '验证并注册'}</Button></>} size="lg">
         <form id="create-knowledge-form" className="form-stack" onSubmit={handleCreate}>
           <div className="form-field"><label htmlFor="knowledge-name">名称</label><input id="knowledge-name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required /></div>
           <div className="form-field"><label htmlFor="knowledge-description">用途说明</label><textarea id="knowledge-description" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} rows={3} /></div>
           <div className="form-field"><label htmlFor="knowledge-endpoint">MCP Server URL</label><input id="knowledge-endpoint" type="url" value={form.endpoint} onChange={(event) => setForm((current) => ({ ...current, endpoint: event.target.value }))} placeholder="https://context.example.com/mcp" required /></div>
-          <div className="form-grid"><div className="form-field"><label htmlFor="knowledge-auth">鉴权方式</label><select id="knowledge-auth" value={form.authType} onChange={(event) => setForm((current) => ({ ...current, authType: event.target.value as KnowledgeBase['authType'] }))}><option value="bearer">Bearer Token</option><option value="api_key">API Key</option><option value="none">无鉴权</option></select></div><div className="form-field"><label htmlFor="knowledge-mode">检索模式</label><select id="knowledge-mode" value={form.retrievalMode} onChange={(event) => setForm((current) => ({ ...current, retrievalMode: event.target.value as RetrievalMode }))}>{Object.entries(retrievalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div></div>
+          <div className="form-grid"><div className="form-field"><label htmlFor="knowledge-auth">鉴权方式</label><select id="knowledge-auth" value={form.authType} onChange={(event) => setForm((current) => ({ ...current, authType: event.target.value as 'bearer' | 'api_key' | 'none' }))}><option value="bearer">Bearer Token</option><option value="api_key">API Key</option><option value="none">无鉴权</option></select></div><div className="form-field"><label htmlFor="knowledge-mode">检索模式</label><select id="knowledge-mode" value={form.retrievalMode} onChange={(event) => setForm((current) => ({ ...current, retrievalMode: event.target.value as RetrievalMode }))}>{Object.entries(retrievalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div></div>
           {form.authType !== 'none' ? <div className="form-field"><label htmlFor="knowledge-credential">访问凭证</label><input id="knowledge-credential" type="password" value={form.credential} onChange={(event) => setForm((current) => ({ ...current, credential: event.target.value }))} autoComplete="new-password" /><small><ShieldCheck size={13} />凭证由后端独立加密保存，前端不会再次回显。</small></div> : null}
           {formError ? <p className="form-error"><AlertTriangle size={14} />{formError}</p> : null}
         </form>

@@ -119,6 +119,7 @@ export const initialTasks: Task[] = [
     tags: ['工作台', 'P1'],
     updatedAt: '3 分钟前',
     events: taskEvents('CC-2026-031', 'running', '3 分钟前'),
+    result: '',
   },
   {
     id: 'CC-2026-030',
@@ -140,6 +141,7 @@ export const initialTasks: Task[] = [
     tags: ['需求', '审批'],
     updatedAt: '8 分钟前',
     events: taskEvents('CC-2026-030', 'awaiting_approval', '8 分钟前'),
+    result: '',
   },
   {
     id: 'CC-2026-029',
@@ -161,6 +163,7 @@ export const initialTasks: Task[] = [
     tags: ['Connector', '可靠性'],
     updatedAt: '24 分钟前',
     events: taskEvents('CC-2026-029', 'assigned', '24 分钟前'),
+    result: '',
   },
   {
     id: 'CC-2026-028',
@@ -182,6 +185,7 @@ export const initialTasks: Task[] = [
     tags: ['Diff', '审查'],
     updatedAt: '昨天',
     events: taskEvents('CC-2026-028', 'succeeded', '昨天'),
+    result: '',
   },
   {
     id: 'CC-2026-027',
@@ -203,6 +207,7 @@ export const initialTasks: Task[] = [
     tags: ['MCP', '健康检查'],
     updatedAt: '昨天',
     events: taskEvents('CC-2026-027', 'failed', '昨天'),
+    result: '',
   },
   {
     id: 'CC-2026-026',
@@ -224,6 +229,7 @@ export const initialTasks: Task[] = [
     tags: ['Token', 'QA'],
     updatedAt: '2 天前',
     events: taskEvents('CC-2026-026', 'succeeded', '2 天前'),
+    result: '',
   },
 ]
 
