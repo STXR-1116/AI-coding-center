@@ -25,12 +25,13 @@ import {
 } from 'lucide-react'
 import { Button, Dialog, EmptyState, IconButton, ProgressBar, StatusBadge } from '../components/ui'
 import { PageHeader, SummaryStrip, WorkbenchLayout } from '../components/layout'
-import { useAgents, useRegisterAgent, useSquads, useUpdateAgent } from '../queries/agents'
+import { useAgents, useRegisterAgent, useRotateAgentToken, useSquads, useUpdateAgent } from '../queries/agents'
 import { ApiClientError } from '../api/client'
 import { handleApiError } from '../queries/errors'
 import { toAgent, toSquad } from '../api/agents'
 import type { Squad } from '../api/agents'
 import { useToast } from '../state/useToast'
+import { useApp } from '../state/useApp'
 import type {
   Agent,
   AgentStatus,
@@ -78,10 +79,14 @@ function StatePanel({ icon, title, description }: { icon: React.ReactNode; title
 
 export function AgentsPage() {
   const { notify } = useToast()
+  const { user } = useApp()
   const agentsQuery = useAgents()
   const squadsQuery = useSquads()
   const updateAgentMutation = useUpdateAgent()
   const registerAgentMutation = useRegisterAgent()
+  const rotateTokenMutation = useRotateAgentToken()
+  // 轮换 Token 为管理操作——EMPLOYEE 不可见（与后端 agent:rotate-token 能力对齐）
+  const canRotateToken = user?.role !== 'employee'
 
   const [view, setView] = useState<'agents' | 'squads'>('agents')
   const [query, setQuery] = useState('')
@@ -165,6 +170,24 @@ export function AgentsPage() {
     })
   }
 
+  // 轮换 Token：后端一次性返回新 secret → hook 已写入剪贴板；此处仅按结果出 toast，
+  // 明文绝不落入 state/渲染（与注册凭证的安全约束一致）。
+  const handleRotateToken = (id: string, name: string) => {
+    rotateTokenMutation.mutate(id, {
+      onSuccess: (result) => {
+        const secret = result.token
+        void navigator.clipboard?.writeText(secret).then(
+          () => notify(`已轮换「${name}」的 Token，新 Token 已复制到剪贴板（仅显示一次，请立即安全保存）。`, { tone: 'success' }),
+          () => notify(`已轮换「${name}」的 Token，但剪贴板写入失败。新 Token：${secret}（仅本次显示，请立即安全保存）。`, { tone: 'warning' }),
+        )
+      },
+      onError: (error) => notify(
+        handleApiError(error),
+        { tone: 'error', title: '轮换失败' },
+      ),
+    })
+  }
+
   // Squads 创建表单仍为本地占位（后端 POST /squads 未在本任务范围；保留 UI，不写库）
   const handleCreateSquad = (event: FormEvent) => {
     event.preventDefault()
@@ -201,6 +224,7 @@ export function AgentsPage() {
       <footer className="inspector-footer">
         {['stale', 'offline'].includes(selectedAgent.status) ? <Button variant="primary" icon={<RefreshCw size={15} />} onClick={() => patchAgent(selectedAgent.id, { status: 'idle' }, '已发起恢复连接')}>恢复连接</Button> : <Button icon={<Activity size={15} />} onClick={() => notify('心跳检查待后端 runtime 接口接入。', { tone: 'info' })}>检查心跳</Button>}
         <Button variant="ghost" icon={selectedAgent.status === 'offline' ? <Wifi size={15} /> : <WifiOff size={15} />} onClick={() => patchAgent(selectedAgent.id, { status: selectedAgent.status === 'offline' ? 'idle' : 'offline' }, selectedAgent.status === 'offline' ? '已启用实例' : '已停用实例')}>{selectedAgent.status === 'offline' ? '启用实例' : '停用实例'}</Button>
+        {canRotateToken && <Button variant="ghost" icon={<KeyRound size={15} />} onClick={() => handleRotateToken(selectedAgent.id, selectedAgent.name)}>轮换 Token</Button>}
       </footer>
     </aside>
   ) : view === 'squads' && selectedSquad ? (

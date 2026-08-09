@@ -542,6 +542,20 @@ export interface RegisterAgentResponse {
   }
 }
 
+/**
+ * Response of `POST /agents/{id}/rotate-token` (SEC-6). The freshly signed
+ * credential secret is returned in the clear exactly once; the UI copies it to
+ * the clipboard and never persists or re-renders it.
+ */
+export interface RotateAgentTokenResponse {
+  agent: AgentDto
+  /**
+   * Plain secret — only ever returned once by the rotate endpoint; never echoed again.
+   * Caller must copy it immediately and never persist it to state/rendering.
+   */
+  token: string
+}
+
 /** Patch accepted by `PATCH /agents/{id}`. All fields optional. */
 export interface UpdateAgentPatch {
   name?: string

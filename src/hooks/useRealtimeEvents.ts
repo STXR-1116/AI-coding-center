@@ -17,6 +17,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { tasksKeys } from '../queries/tasks'
+import { agentsKeys } from '../queries/agents'
 
 /** SSE 帧的 data 字段统一为 JSON；type 决定分发分支。 */
 interface RealtimeEvent {
@@ -89,10 +90,17 @@ export function useRealtimeEvents(enabled: boolean): UseRealtimeEventsResult {
           void queryClient.invalidateQueries({ queryKey: tasksKeys.lists() })
           break
         }
-        case 'agent.health':
-          // 预留：MVP 无对应 UI，仅记录便于后续接入。
-          console.debug('[realtime]', event.type, event)
+        case 'agent.health': {
+          // P3-11：agent 心跳状态变化 → 刷新 agents 列表/详情（AgentsPage 实时）
+          const healthAgentId = (event as { agentId?: string }).agentId
+          if (healthAgentId) {
+            void queryClient.invalidateQueries({ queryKey: agentsKeys.detail(healthAgentId) })
+            void queryClient.invalidateQueries({ queryKey: agentsKeys.lists() })
+          } else {
+            void queryClient.invalidateQueries({ queryKey: agentsKeys.lists() })
+          }
           break
+        }
         default:
           // hello / keep-alive / 未知类型：无需处理。
           break

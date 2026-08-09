@@ -42,9 +42,34 @@ vi.mock('./hooks/useRealtimeEvents', () => ({
 // P2-3b：预算配置 mock（预算 tab 测试盲区防护——App 挂载不触发真实 fetch）
 // 注意：mock 值必须是模块级稳定引用——工厂内联创建新对象会触发 React Query 无限重渲染
 const MOCK_BUDGET_CONFIG = { base: 8000, per100Chars: 400, min: 8000, max: 100000, version: 0 }
+// P3-9：平台参数（模块级稳定常量——防 React Query 无限重渲染）
+const MOCK_PLATFORM_CONFIG = {
+  defaultExecutionMode: 'auto',
+  monthlyTokenBudget: 1200000,
+  singleTaskTokenLimit: 32000,
+  budgetWarningThreshold: 0.8,
+  defaultPriority: 'MEDIUM',
+  timezone: 'Asia/Shanghai',
+  auditRetentionDays: 180,
+  backupSchedule: '0 3 * * *',
+  backupRetentionDays: 30,
+  credentialRotationDays: 90,
+  sandboxEnabled: true,
+  sandboxImage: 'node:20-alpine',
+  maxConcurrentTasks: 4,
+  notificationsEnabled: true,
+  notificationChannels: ['inApp'],
+  quietHoursStart: '23:00',
+  quietHoursEnd: '07:00',
+  emailNotificationsEnabled: false,
+  emailRecipients: '',
+  version: 0,
+}
 vi.mock('./queries/config', () => ({
   useTokenBudgetConfig: () => ({ data: MOCK_BUDGET_CONFIG, isLoading: false }),
   useUpdateTokenBudgetConfig: () => ({ mutate: vi.fn(), isPending: false }),
+  usePlatformConfig: () => ({ data: MOCK_PLATFORM_CONFIG, isLoading: false }),
+  useUpdatePlatformConfig: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 // P2-4b：dashboard / users query mock（/users、/analytics 路由盲区防护——App 挂载不触发真实 fetch）
 // 注意：mock 值必须是模块级稳定引用——工厂内联创建新对象会触发 React Query 无限重渲染（P2-3b 教训）

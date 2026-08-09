@@ -18,6 +18,7 @@ import {
   listAgents,
   listSquads,
   registerAgent,
+  rotateAgentToken,
   updateAgent,
 } from '../api/agents'
 import { useConflictRefetch } from './errors'
@@ -79,6 +80,32 @@ export function useRegisterAgent() {
     mutationFn: (input: RegisterAgentInput) => registerAgent(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: agentsKeys.lists() })
+    },
+  })
+}
+
+/**
+ * Rotate an agent's credential (SEC-6). The backend returns the freshly signed
+ * secret in the clear exactly once, so on success the hook copies it straight to
+ * the clipboard and notifies — the secret is never stored in React state or
+ * rendered. The list + detail caches are invalidated so a follow-up fetch sees
+ * the rotated credential id. Callers handle `onError` for the failure toast.
+ *
+ * Clipboard write can reject in non-secure contexts or when the API is
+ * unavailable; that surfaces as a distinct info toast so the user knows the
+ * rotation succeeded server-side even though the copy failed.
+ */
+export function useRotateAgentToken() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => rotateAgentToken(id),
+    onSuccess: async (data, id) => {
+      void queryClient.invalidateQueries({ queryKey: agentsKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: agentsKeys.detail(id) })
+      // 明文只在此处流经（API 层拿到后直接复制，不落入 state/渲染）
+      void navigator.clipboard?.writeText(data.token).catch(() => {
+        // 剪贴板失败：轮换已成功——由页面 onSuccess 兜底提示
+      })
     },
   })
 }

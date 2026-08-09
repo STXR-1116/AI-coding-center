@@ -27,6 +27,7 @@ import type {
   ExecutionMode,
   RegisterAgentInput,
   RegisterAgentResponse,
+  RotateAgentTokenResponse,
   SquadDto,
   SquadListResponse,
   UpdateAgentPatch,
@@ -141,6 +142,19 @@ export function registerAgent(
 ): Promise<RegisterAgentResponse> {
   // 注册幂等（重试不重复签发凭证）；后端一次性返回 credential.secret
   return post<RegisterAgentResponse>('/agents', input, { idempotent: true })
+}
+
+/**
+ * `POST /agents/{id}/rotate-token` (SEC-6) — issue a fresh credential for the
+ * agent, invalidating the previous secret. The new secret is returned in the
+ * clear exactly once; the caller must copy it immediately and never persist it.
+ */
+export function rotateAgentToken(
+  id: string,
+): Promise<RotateAgentTokenResponse> {
+  return post<RotateAgentTokenResponse>(
+    `/agents/${encodeURIComponent(id)}/rotate-token`,
+  )
 }
 
 export function updateAgent(

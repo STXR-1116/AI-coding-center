@@ -21,9 +21,12 @@ import {
   Zap,
 } from 'lucide-react'
 import { ApiClientError } from '../api/client'
+import { exportAuditLogs } from '../api/audit'
+import { handleApiError } from '../queries/errors'
 import { Button, Dialog, ProgressBar, StatusBadge } from '../components/ui'
 import { MobileViewTabs } from '../components/layout'
 import { useAuditLogs, useDashboardSummary, useMetricsSummary, type DashboardRange } from '../queries/dashboard'
+import { useToast } from '../state/useToast'
 import type {
   AgentMetricBreakdownDto,
   AuditLogDto,
@@ -161,6 +164,7 @@ function toTrendPoints(perAgent: AgentMetricBreakdownDto[]): TrendPoint[] {
 }
 
 export function AnalyticsPage() {
+  const { notify } = useToast()
   const summaryQuery = useDashboardSummary()
   const [range, setRange] = useState<RangeKey>('30d')
   const metricsQuery = useMetricsSummary(range)
@@ -170,6 +174,7 @@ export function AnalyticsPage() {
   const [actorType, setActorType] = useState<AuditActor>('all')
   const [auditLimit, setAuditLimit] = useState(6)
   const [selectedAudit, setSelectedAudit] = useState<AuditEvent | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const summary: DashboardSummaryDto | undefined = summaryQuery.data
   const metrics: MetricsSummaryDto | undefined = metricsQuery.data
@@ -226,18 +231,26 @@ export function AnalyticsPage() {
     })
   }, [actorType, auditQuery, auditLogs])
 
-  const exportAudit = () => {
-    const rows = [
-      ['time', 'actor', 'actor_type', 'action', 'target', 'result', 'trace_id'],
-      ...filteredAudits.map((event) => [event.time, event.actor, event.actorType, event.action, event.target, event.result, event.traceId]),
-    ]
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n')
-    const url = URL.createObjectURL(new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' }))
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `codingcenter-audit-${range}.csv`
-    anchor.click()
-    URL.revokeObjectURL(url)
+  // 导出审计日志：GET /audit-logs/export → blob → objectURL 触发下载。
+  // 走 fetch 而非浏览器直链，以便统一 401/403/500 错误处理（handleApiError toast，不静默）。
+  const exportAudit = async () => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const blob = await exportAuditLogs()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      anchor.download = `audit-logs-${stamp}.csv`
+      anchor.click()
+      URL.revokeObjectURL(url)
+      notify('审计日志已导出', { tone: 'success' })
+    } catch (error) {
+      notify(handleApiError(error), { tone: 'error', title: '导出失败' })
+    } finally {
+      setExporting(false)
+    }
   }
 
   // 加载/错误态：summary 是页面骨架，失败时整页降级
@@ -270,7 +283,7 @@ export function AnalyticsPage() {
             <button key={value} className={range === value ? 'is-active' : ''} onClick={() => setRange(value)}>{rangeLabels[value]}</button>
           ))}
         </div>
-        <Button variant="secondary" size="sm" icon={<ArrowDownToLine size={15} />} onClick={exportAudit}>导出审计</Button>
+        <Button variant="secondary" size="sm" icon={<ArrowDownToLine size={15} />} disabled={exporting} onClick={exportAudit}>{exporting ? '导出中…' : '导出审计'}</Button>
         </div>
       </header>
 
